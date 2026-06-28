@@ -34,7 +34,7 @@ import {
 import { useStore } from "@/stores/useStore";
 import { CATALOG, Title, searchCatalog, ALL_GENRES, getByGenre } from "@/lib/catalog";
 import type { MovieItem } from "@/lib/h5api";
-import { fetchHomeDirect } from "@/lib/h5api";
+import { fetchHomeDirect, fetchPlayDirect } from "@/lib/h5api";
 import { optimizeImage } from "@/lib/image";
 import { useMovieSearch, useDetail } from "@/lib/use-moviebox";
 import Player from "@/components/zexbox/Player";
@@ -103,27 +103,52 @@ export default function Page() {
 
   const playTitle = useCallback(async (item: DisplayItem, episode?: string) => {
     if (item.source === "moviebox") {
-      try {
-        const res = await fetch(`/api/moviebox?action=play&subjectId=${encodeURIComponent(String(item.id))}`).then((r) => r.json());
-        const streams = res.streams || [];
-        if (streams.length > 0) {
-          const best = streams.reduce((a: any, b: any) => (Number(a.resolutions) > Number(b.resolutions) ? a : b));
-          setPlayer({
-            title: item.type === "tv" && episode ? `${item.title} - ${episode}` : item.title,
-            streamUrl: best.url,
-            poster: item.backdrop || item.poster,
-          });
-          useStore.getState().addToHistory({
-            id: typeof item.id === "string" ? hashStr(item.id) : item.id,
-            type: item.type, title: item.title, poster: item.poster || "",
-            progress: 0, episode,
-          });
-          return;
+      // Parse episode info if provided (e.g. "S1E3")
+      let se: number | undefined;
+      let ep: number | undefined;
+      if (episode) {
+        const m = episode.match(/S(\d+)E(\d+)/i);
+        if (m) {
+          se = Number(m[1]);
+          ep = Number(m[2]);
         }
-      } catch { /* fall through */ }
+      }
+      try {
+        // Use the h5-api play endpoint directly (same as movie-box.co)
+        const result = await fetchPlayDirect(String(item.id), se, ep);
+        const allStreams = [
+          ...(result.streams || []),
+          ...(result.hls || []),
+          ...(result.dash || []),
+        ];
+        if (allStreams.length > 0) {
+          // Pick best resolution (highest number)
+          const best = allStreams.reduce((a: any, b: any) => {
+            const aRes = Number(a.resolutions || a.resolution || 0);
+            const bRes = Number(b.resolutions || b.resolution || 0);
+            return aRes > bRes ? a : b;
+          });
+          const streamUrl = best.url || best.playUrl || best.streamUrl;
+          if (streamUrl) {
+            setPlayer({
+              title: item.type === "tv" && episode ? `${item.title} - ${episode}` : item.title,
+              streamUrl,
+              poster: item.backdrop || item.poster,
+            });
+            useStore.getState().addToHistory({
+              id: typeof item.id === "string" ? hashStr(item.id) : item.id,
+              type: item.type, title: item.title, poster: item.poster || "",
+              progress: 0, episode,
+            });
+            return;
+          }
+        }
+      } catch { /* fall through to embed */ }
+      // Fallback: use multiembed title search
       const q = encodeURIComponent(`${item.title} ${item.year || ""}`.trim());
       setPlayer({ title: item.title, embedUrl: `https://multiembed.mov/?search=${q}`, poster: item.backdrop || item.poster });
     } else {
+      // Static catalog items — use multiembed with TMDB ID
       const isTv = item.type === "tv";
       let embedUrl: string;
       if (isTv && episode) {
@@ -872,7 +897,7 @@ function DetailView({ item, initialEpisode, onPlay, onBack, onOpen }: {
   const inList = !!watchlist.find((w) => String(w.id) === String(item.id));
 
   const liveId = item.source === "moviebox" ? String(item.id) : null;
-  const { detail: liveDetail, recs: liveRecs, loading: detailLoading } = useDetail(liveId);
+  const { detail: liveDetail, recs: liveRecs, seasons: liveSeasons, loading: detailLoading } = useDetail(liveId);
 
   const mergedItem: DisplayItem = useMemo(() => {
     if (!liveDetail) return item;
@@ -885,18 +910,26 @@ function DetailView({ item, initialEpisode, onPlay, onBack, onOpen }: {
       genres: d.genre ? d.genre.split(/[,/|]/).map((g: string) => g.trim()).filter(Boolean) : item.genres,
       cast: d.staffList?.map((s: any) => s.name).filter(Boolean) || item.cast,
       director: d.staffList?.find((s: any) => s.role === "Director")?.name || item.director,
-      seasons: d.seNum || item.seasons,
+      seasons: liveSeasons?.seasons?.length || d.seNum || item.seasons,
       rating: d.imdbRatingValue ? Number(d.imdbRatingValue) : item.rating,
       ratingCount: d.imdbRatingCount || d.ratingCount,
       country: d.countryName || item.country,
     };
-  }, [item, liveDetail]);
+  }, [item, liveDetail, liveSeasons]);
 
+  // Build episode list from real season info
   const episodes = useMemo(() => {
     if (mergedItem.type !== "tv") return [];
+    // If we have live season info, use the actual maxEp for the selected season
+    if (liveSeasons?.seasons?.length > 0) {
+      const seasonInfo = liveSeasons.seasons.find((s: any) => s.se === selectedSeason) || liveSeasons.seasons[0];
+      const maxEp = seasonInfo?.maxEp || 10;
+      return Array.from({ length: Math.min(maxEp, 50) }, (_, i) => i + 1);
+    }
+    // Fallback: show 10 episodes
     const count = Math.min(mergedItem.episodes || 10, 24);
     return Array.from({ length: count }, (_, i) => i + 1);
-  }, [mergedItem]);
+  }, [mergedItem, liveSeasons, selectedSeason]);
 
   const recommendations = useMemo(() => {
     const live = liveRecs.map(fromMovieBox);

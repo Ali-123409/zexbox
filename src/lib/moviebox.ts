@@ -473,9 +473,12 @@ export async function getSubjectDetail(subjectId: string) {
 }
 
 // Play info (REQUIRES guest JWT — uses subjectId param, returns streams array)
-export async function getPlayInfo(subjectId: string, episodeId?: string) {
+// For TV shows, pass se (season number) and ep (episode number)
+export async function getPlayInfo(subjectId: string, episodeId?: string, se?: number, ep?: number) {
   const query: Record<string, string> = { subjectId };
   if (episodeId) query.episodeId = episodeId;
+  if (se) query.se = String(se);
+  if (ep) query.ep = String(ep);
   return signedRequest({
     path: `${BASE_PATH}/subject-api/play-info`,
     query,

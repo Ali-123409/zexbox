@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import type { MovieItem } from "@/lib/moviebox";
+import type { MovieItem } from "@/lib/h5api";
+import { searchDirect, fetchDetailDirect, fetchRecsDirect, fetchPlayDirect, fetchSeasonsDirect } from "@/lib/h5api";
 
 interface ApiResponse<T> {
   items?: MovieItem[];
@@ -12,64 +13,11 @@ interface ApiResponse<T> {
   error?: string;
 }
 
-async function api<T = any>(action: string, params: Record<string, string> = {}): Promise<T> {
-  const url = new URL("/api/moviebox", window.location.origin);
-  url.searchParams.set("action", action);
-  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`API ${action} failed: ${res.status}`);
-  return res.json();
-}
-
-// Hook: fetch hot + lists + trending for home view
-export function useHomeData() {
-  const [hot, setHot] = useState<MovieItem[]>([]);
-  const [movies, setMovies] = useState<MovieItem[]>([]);
-  const [tv, setTv] = useState<MovieItem[]>([]);
-  const [trendingMovies, setTrendingMovies] = useState<MovieItem[]>([]);
-  const [trendingShows, setTrendingShows] = useState<MovieItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        setLoading(true);
-        const [hotRes, movieRes, tvRes, trendMovieRes, trendTvRes] = await Promise.all([
-          api<ApiResponse>("hot").catch(() => ({ items: [] })),
-          api<ApiResponse>("list", { category: "movie", size: "20" }).catch(() => ({ items: [] })),
-          api<ApiResponse>("list", { category: "tv", size: "20" }).catch(() => ({ items: [] })),
-          api<ApiResponse>("trending", { category: "movie", size: "20" }).catch(() => ({ items: [] })),
-          api<ApiResponse>("trending", { category: "tv", size: "20" }).catch(() => ({ items: [] })),
-        ]);
-        if (cancelled) return;
-        setHot(hotRes.items || []);
-        setMovies(movieRes.items || []);
-        setTv(tvRes.items || []);
-        setTrendingMovies(trendMovieRes.items || []);
-        setTrendingShows(trendTvRes.items || []);
-        setError("");
-      } catch (e: any) {
-        if (!cancelled) setError(e?.message || "Failed to load");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  return { hot, movies, tv, trendingMovies, trendingShows, loading, error };
-}
-
-// Hook: debounced search — uses LIVE /subject-api/search/v2 (with guest JWT)
+// Hook: debounced search — uses h5-api DIRECTLY (no proxy, with visitor token)
 // Properly handles race conditions with a ref-based request ID.
 export function useMovieSearch(keyword: string, delay = 400) {
   const [results, setResults] = useState<MovieItem[]>([]);
   const [loading, setLoading] = useState(false);
-  // Ref to track the latest request — survives re-renders
   const latestRequestRef = useRef(0);
 
   useEffect(() => {
@@ -80,19 +28,14 @@ export function useMovieSearch(keyword: string, delay = 400) {
       return;
     }
 
-    // Increment request ID — only the latest one will update state
     const myRequestId = ++latestRequestRef.current;
 
     const t = setTimeout(async () => {
       setLoading(true);
       try {
-        const res = await fetch(
-          `/api/moviebox?action=search&keyword=${encodeURIComponent(trimmed)}`
-        ).then((r) => r.json()).catch(() => ({ items: [] }));
-
-        // Only update if this is still the latest request
+        const items = await searchDirect(trimmed);
         if (myRequestId !== latestRequestRef.current) return;
-        setResults(res.items || []);
+        setResults(items);
       } catch {
         if (myRequestId !== latestRequestRef.current) return;
         setResults([]);
@@ -104,40 +47,44 @@ export function useMovieSearch(keyword: string, delay = 400) {
 
     return () => {
       clearTimeout(t);
-      // Don't reset latestRequestRef here — that would let stale requests through
     };
   }, [keyword, delay]);
 
   return { results, loading };
 }
 
-// Hook: fetch detail + recs
+// Hook: fetch detail + recs directly via h5-api
 export function useDetail(id: string | null) {
   const [detail, setDetail] = useState<any>(null);
   const [recs, setRecs] = useState<MovieItem[]>([]);
+  const [seasons, setSeasons] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!id) {
       setDetail(null);
       setRecs([]);
+      setSeasons(null);
       return;
     }
     let cancelled = false;
     (async () => {
       setLoading(true);
       try {
-        const [dRes, rRes] = await Promise.all([
-          api<ApiResponse>("detail", { id }).catch(() => ({ detail: null })),
-          api<ApiResponse>("recs", { id }).catch(() => ({ items: [] })),
+        const [d, r, s] = await Promise.all([
+          fetchDetailDirect(id),
+          fetchRecsDirect(id),
+          fetchSeasonsDirect(id),
         ]);
         if (cancelled) return;
-        setDetail(dRes.detail);
-        setRecs(rRes.items || []);
+        setDetail(d);
+        setRecs(r);
+        setSeasons(s);
       } catch {
         if (!cancelled) {
           setDetail(null);
           setRecs([]);
+          setSeasons(null);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -148,11 +95,12 @@ export function useDetail(id: string | null) {
     };
   }, [id]);
 
-  return { detail, recs, loading };
+  return { detail, recs, seasons, loading };
 }
 
-// Hook: fetch play streams (returns real MP4/HLS URLs from MovieBox CDN)
-export function usePlayStreams(subjectId: string | null) {
+// Hook: fetch play streams directly via h5-api
+// For TV shows, pass se (season) + ep (episode number)
+export function usePlayStreams(subjectId: string | null, se?: number, ep?: number) {
   const [streams, setStreams] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -165,9 +113,15 @@ export function usePlayStreams(subjectId: string | null) {
     (async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/moviebox?action=play&subjectId=${encodeURIComponent(subjectId)}`).then((r) => r.json());
+        const result = await fetchPlayDirect(subjectId, se, ep);
         if (cancelled) return;
-        setStreams(res.streams || []);
+        // Combine streams + hls + dash into one array
+        const all = [
+          ...(result.streams || []),
+          ...(result.hls || []),
+          ...(result.dash || []),
+        ];
+        setStreams(all);
       } catch {
         if (!cancelled) setStreams([]);
       } finally {
@@ -177,7 +131,7 @@ export function usePlayStreams(subjectId: string | null) {
     return () => {
       cancelled = true;
     };
-  }, [subjectId]);
+  }, [subjectId, se, ep]);
 
   return { streams, loading };
 }

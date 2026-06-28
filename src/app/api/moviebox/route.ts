@@ -13,6 +13,7 @@ import {
   getDetailRec,
   getVisitorUserId,
   getCurrentDevice,
+  getGuestJwt,
   getHomeData,
   getH5Trending,
   getBottomTabs,
@@ -275,12 +276,70 @@ export async function GET(req: NextRequest) {
       case "play": {
         const subjectId = url.searchParams.get("subjectId") || url.searchParams.get("id");
         if (!subjectId) return NextResponse.json({ error: "subjectId required" }, { status: 400 });
-        const episodeId = url.searchParams.get("episodeId") || undefined;
-        const raw = await getPlayInfo(subjectId, episodeId);
+        const se = url.searchParams.get("se") || undefined;
+        const ep = url.searchParams.get("ep") || undefined;
+
+        // Use the mobile API play-info endpoint (requires signed request + guest JWT)
+        // For TV shows, we need episodeId. We construct it from se/ep if provided.
+        // For movies, no episodeId needed.
+        let episodeId: string | undefined;
+        if (se && ep) {
+          // The mobile API expects episodeId as a string identifier
+          // Try passing the episode number directly
+          episodeId = ep;
+        }
+
+        const result = await cached(`play:${subjectId}:${se || ""}:${ep || ""}`, async () => {
+          const seNum = se ? Number(se) : undefined;
+          const epNum = ep ? Number(ep) : undefined;
+          const raw = await getPlayInfo(subjectId, undefined, seNum, epNum);
+          return {
+            streams: normalizePlaySources(raw),
+            hasResource: (raw?.data?.streams?.length || 0) > 0,
+          };
+        }, 30 * 60 * 1000);
+
+        // If mobile API returned no streams, try the h5-api as fallback
+        if (!result.streams || result.streams.length === 0) {
+          try {
+            const jwt = await getGuestJwt();
+            let h5Url = `https://h5-api.aoneroom.com/wefeed-h5api-bff/subject/play?subjectId=${subjectId}`;
+            if (se) h5Url += `&se=${se}`;
+            if (ep) h5Url += `&ep=${ep}`;
+            const h5Res = await fetch(h5Url, {
+              headers: {
+                Accept: "application/json",
+                Cookie: `token=${jwt}; mb_token=${jwt}`,
+                Origin: "https://movie-box.co",
+              },
+            });
+            const h5Raw = await h5Res.json();
+            const data = h5Raw?.data || {};
+            const h5Streams = [
+              ...(data.streams || []),
+              ...(data.hls || []),
+              ...(data.dash || []),
+            ];
+            if (h5Streams.length > 0) {
+              return NextResponse.json({
+                streams: h5Streams,
+                hls: data.hls || [],
+                dash: data.dash || [],
+                hasResource: data.hasResource || true,
+                source: "h5-api",
+              });
+            }
+          } catch {
+            // h5-api also failed — fall through to return empty result
+          }
+        }
+
         return NextResponse.json({
-          streams: normalizePlaySources(raw),
-          title: raw?.data?.title,
-          raw,
+          streams: result.streams || [],
+          hls: [],
+          dash: [],
+          hasResource: result.hasResource || false,
+          source: "mobile-api",
         });
       }
       case "seasons": {
