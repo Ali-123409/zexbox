@@ -235,6 +235,7 @@ export default function Page() {
       <BottomNav view={view} setView={setView} />
       {player && (
         <Player
+          key={`${player.title}-${player.streamUrl || player.embedUrl}`}
           title={player.title}
           streamUrl={player.streamUrl}
           embedUrl={player.embedUrl}

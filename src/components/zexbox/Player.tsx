@@ -25,6 +25,8 @@ export default function Player({
   onSeasonChange, onEpisodeChange,
 }: PlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  // Reset mode when streamUrl/embedUrl changes (e.g., switching episodes)
+  // Derive the initial mode from props; use a key-based reset via parent component instead
   const [mode, setMode] = useState<"loading" | "hls" | "mp4" | "embed" | "error">(
     () => (embedUrl ? "embed" : !streamUrl ? "error" : "mp4")
   );
@@ -35,6 +37,9 @@ export default function Player({
     if (!streamUrl) return;
     const v = videoRef.current;
     if (!v) return;
+
+    // Reset the video element
+    v.removeAttribute("src");
 
     if (streamUrl.endsWith(".m3u8")) {
       if (Hls.isSupported()) {
@@ -63,6 +68,7 @@ export default function Player({
         });
       }
     } else {
+      // MP4 — set src directly
       v.src = streamUrl;
       v.load();
       v.play().catch(() => {});
@@ -122,7 +128,8 @@ export default function Player({
             </div>
           )}
 
-          {(mode === "hls" || mode === "mp4" || mode === "loading") && (
+          {/* Always render video element when we have a streamUrl (not embed, not error) */}
+          {mode !== "embed" && mode !== "error" && (
             <video
               ref={videoRef}
               controls
