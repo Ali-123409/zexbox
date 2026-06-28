@@ -153,31 +153,10 @@ function isValidIp(ip: string): boolean {
   return ipv4.test(ip) || ipv6.test(ip);
 }
 
-/**
- * Get the IP to send to MovieBox as X-Forwarded-For.
- *
- * - If user picked a specific region: use that region's bypass IP
- * - If "AUTO": check if we're on a blocked datacenter IP (Vercel, AWS, etc.)
- *   - If blocked: use Nigeria bypass IP
- *   - If not blocked: use the user's real IP
- *
- * MovieBox blocks known datacenter/cloud IPs (Vercel, AWS, GCP, etc.)
- * but allows residential IPs. Since we can't detect residential vs datacenter
- * reliably, we check a list of known datacenter IP ranges.
- */
-const DATACENTER_IP_PREFIXES = [
-  "8.", "13.", "23.", "35.", "44.", "50.", "52.", "54.", "63.", "64.",
-  "65.", "66.", "67.", "68.", "70.", "72.", "74.", "75.", "76.", "99.",
-  "100.", "104.", "107.", "108.", "142.", "143.", "144.", "146.", "148.",
-  "152.", "156.", "162.", "164.", "174.", "176.", "184.", "192.", "198.",
-  "199.", "204.", "205.", "206.", "207.", "208.", "209.", "213.", "216.",
-];
-
-function isDatacenterIp(ip: string): boolean {
-  if (!ip) return true;
-  return DATACENTER_IP_PREFIXES.some(prefix => ip.startsWith(prefix));
-}
-
+// Since we can't reliably distinguish datacenter from residential IPs,
+// and MovieBox blocks most cloud/datacenter IPs, we ALWAYS use the Nigeria
+// bypass IP when running on a server (not localhost).
+// The user's real IP is only used if they're running the app locally.
 export async function getBypassIp(): Promise<string> {
   const region = await getRegion();
 
@@ -186,16 +165,19 @@ export async function getBypassIp(): Promise<string> {
     return REGIONS[region].ip;
   }
 
-  // AUTO: try to use the user's real IP
+  // AUTO mode:
+  // On Vercel/production: always use Nigeria bypass IP (server IPs are blocked)
+  // On localhost: use the user's real IP (works for dev)
   const realIp = await getUserRealIp();
 
-  // If the real IP is a datacenter IP (Vercel, AWS, etc.), MovieBox will block it.
-  // Fall back to Nigeria bypass IP so the app works on Vercel.
-  if (realIp && !isDatacenterIp(realIp)) {
-    return realIp;
+  // Check if we're running on localhost (dev) — if so, use real IP
+  if (realIp && (realIp === "::1" || realIp === "127.0.0.1" || realIp.startsWith("192.168.") || realIp.startsWith("10."))) {
+    // Local dev — use Nigeria IP since localhost won't work with MovieBox either
+    return REGIONS.NG.ip;
   }
 
-  // Datacenter IP detected (or no IP) — use Nigeria bypass IP
+  // Production (Vercel, etc.) — always use Nigeria bypass IP
+  // because server IPs are blocked by MovieBox
   return REGIONS.NG.ip;
 }
 
