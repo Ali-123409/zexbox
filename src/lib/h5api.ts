@@ -289,7 +289,8 @@ export async function searchDirect(keyword: string, _page = 0, _perPage = 20): P
 }
 
 /**
- * Fetch subject detail directly via h5-api (requires token).
+ * Fetch subject detail via our signed API proxy.
+ * The h5-api /subject/get returns 404, so we use the mobile API.
  */
 export async function fetchDetailDirect(subjectId: string): Promise<any> {
   if (!subjectId) return null;
@@ -299,11 +300,10 @@ export async function fetchDetailDirect(subjectId: string): Promise<any> {
 
   try {
     const res = await fetch(
-      `${H5_HOST}${H5_BASE_PATH}/subject/get?subjectId=${subjectId}`,
-      { headers: authHeaders() }
+      `/api/moviebox?action=detail&subjectId=${subjectId}`
     );
     const raw = await res.json();
-    const detail = raw?.data || null;
+    const detail = raw?.detail || null;
     if (detail) cacheSet(cacheKey, detail, 5 * 60 * 1000);
     return detail;
   } catch {
@@ -312,17 +312,17 @@ export async function fetchDetailDirect(subjectId: string): Promise<any> {
 }
 
 /**
- * Fetch season info (episode counts per season) directly via h5-api.
+ * Fetch season info (episode counts per season) via our signed API proxy.
+ * The h5-api /subject/season-info returns 404, so we use the mobile API.
  */
 export async function fetchSeasonsDirect(subjectId: string): Promise<any> {
   if (!subjectId) return null;
   try {
     const res = await fetch(
-      `${H5_HOST}${H5_BASE_PATH}/subject/season-info?subjectId=${subjectId}`,
-      { headers: authHeaders() }
+      `/api/moviebox?action=seasons&subjectId=${subjectId}`
     );
     const raw = await res.json();
-    return raw?.data || null;
+    return raw?.seasons || null;
   } catch {
     return null;
   }
@@ -368,7 +368,8 @@ export async function fetchPlayDirect(subjectId: string, se?: number, ep?: numbe
 }
 
 /**
- * Fetch recommendations directly via h5-api.
+ * Fetch recommendations via our signed API proxy.
+ * The h5-api /subject/detail-rec returns 404, so we use the mobile API.
  */
 export async function fetchRecsDirect(subjectId: string): Promise<MovieItem[]> {
   if (!subjectId) return [];
@@ -378,11 +379,27 @@ export async function fetchRecsDirect(subjectId: string): Promise<MovieItem[]> {
 
   try {
     const res = await fetch(
-      `${H5_HOST}${H5_BASE_PATH}/subject/detail-rec?subjectId=${subjectId}`,
-      { headers: authHeaders() }
+      `/api/moviebox?action=recs&subjectId=${subjectId}`
     );
     const raw = await res.json();
-    const items = trimItems(raw?.data?.items || raw?.data?.subjects || []);
+    // Our proxy returns items already in MovieItem format
+    const items: MovieItem[] = (raw?.items || []).map((it: any) => ({
+      id: String(it.id || ""),
+      type: it.type === "tv" ? "tv" : "movie",
+      title: it.title || "Untitled",
+      posterUrl: it.posterUrl,
+      coverUrl: it.coverUrl,
+      rating: it.rating,
+      year: it.year,
+      releaseDate: it.releaseDate,
+      genre: it.genre,
+      genres: it.genres || [],
+      country: it.country,
+      language: it.language,
+      duration: it.duration,
+      durationSeconds: it.durationSeconds,
+      overview: it.overview,
+    })).filter((it: MovieItem) => it.id && it.title);
     cacheSet(cacheKey, items, 5 * 60 * 1000);
     return items;
   } catch {

@@ -2,17 +2,28 @@
 
 import { useEffect, useRef, useState } from "react";
 import Hls from "hls.js";
-import { X, AlertCircle, Loader2, ExternalLink } from "lucide-react";
+import { X, AlertCircle, Loader2, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface PlayerProps {
   title: string;
-  streamUrl?: string; // .m3u8 / .mp4 direct
-  embedUrl?: string; // iframe embed (multiembed etc.)
+  streamUrl?: string;
+  embedUrl?: string;
   poster?: string;
   onClose: () => void;
+  // Optional: season/episode navigation (for TV shows)
+  seasonTabs?: number[];
+  currentSeason?: number;
+  currentEpisode?: number;
+  maxEpisodes?: number;
+  onSeasonChange?: (season: number) => void;
+  onEpisodeChange?: (episode: number) => void;
 }
 
-export default function Player({ title, streamUrl, embedUrl, poster, onClose }: PlayerProps) {
+export default function Player({
+  title, streamUrl, embedUrl, poster, onClose,
+  seasonTabs, currentSeason, currentEpisode, maxEpisodes,
+  onSeasonChange, onEpisodeChange,
+}: PlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [mode, setMode] = useState<"loading" | "hls" | "mp4" | "embed" | "error">(
     () => (embedUrl ? "embed" : !streamUrl ? "error" : "mp4")
@@ -52,22 +63,17 @@ export default function Player({ title, streamUrl, embedUrl, poster, onClose }: 
         });
       }
     } else {
-      // MP4 or other direct formats — set src and let the <video> element load it
       v.src = streamUrl;
       v.load();
       v.play().catch(() => {});
     }
   }, [streamUrl, embedUrl]);
 
-  // Lock body scroll
   useEffect(() => {
     document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = "";
-    };
+    return () => { document.body.style.overflow = ""; };
   }, []);
 
-  // Esc to close
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -76,8 +82,11 @@ export default function Player({ title, streamUrl, embedUrl, poster, onClose }: 
     return () => window.removeEventListener("keydown", handler);
   }, [onClose]);
 
+  const hasNav = onEpisodeChange && maxEpisodes && currentEpisode;
+  const hasSeasons = seasonTabs && seasonTabs.length > 1 && onSeasonChange;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/95 backdrop-blur-sm">
       <button
         onClick={onClose}
         aria-label="Close player"
@@ -86,56 +95,105 @@ export default function Player({ title, streamUrl, embedUrl, poster, onClose }: 
         <X className="h-6 w-6" />
       </button>
 
-      <div className="relative w-full max-w-6xl aspect-video bg-black rounded-xl overflow-hidden shadow-2xl">
-        {mode === "loading" && (
-          <div className="absolute inset-0 flex items-center justify-center text-white">
-            <Loader2 className="h-10 w-10 animate-spin text-purple-400" />
-          </div>
-        )}
+      <div className="relative w-full max-w-5xl">
+        {/* Video container */}
+        <div className="relative w-full aspect-video bg-black rounded-xl overflow-hidden shadow-2xl">
+          {mode === "loading" && (
+            <div className="absolute inset-0 flex items-center justify-center text-white">
+              <Loader2 className="h-10 w-10 animate-spin text-[#e50914]" />
+            </div>
+          )}
 
-        {mode === "error" && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white p-6 text-center">
-            <AlertCircle className="h-12 w-12 text-red-400" />
-            <p className="text-lg font-semibold">Unable to play this title</p>
-            <p className="text-sm text-white/60 max-w-md">{errorMsg}</p>
-            {embedUrl && (
-              <a
-                href={embedUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-2 inline-flex items-center gap-2 rounded-md bg-purple-600 px-4 py-2 text-sm font-medium hover:bg-purple-500 transition"
+          {mode === "error" && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white p-6 text-center">
+              <AlertCircle className="h-12 w-12 text-red-400" />
+              <p className="text-lg font-semibold">Unable to play this title</p>
+              <p className="text-sm text-white/60 max-w-md">{errorMsg}</p>
+              {embedUrl && (
+                <a
+                  href={embedUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 inline-flex items-center gap-2 rounded-md bg-[#e50914] px-4 py-2 text-sm font-medium hover:bg-[#f6121d] transition"
+                >
+                  Open stream in new tab <ExternalLink className="h-4 w-4" />
+                </a>
+              )}
+            </div>
+          )}
+
+          {(mode === "hls" || mode === "mp4" || mode === "loading") && (
+            <video
+              ref={videoRef}
+              controls
+              autoPlay
+              poster={poster}
+              className="h-full w-full"
+              title={title}
+            />
+          )}
+
+          {mode === "embed" && embedUrl && (
+            <iframe
+              src={embedUrl}
+              title={title}
+              allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+              allowFullScreen
+              referrerPolicy="origin"
+              className="h-full w-full border-0"
+            />
+          )}
+        </div>
+
+        {/* Title bar below video */}
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <div className="text-white/90 text-sm font-medium truncate flex-1">
+            {title}
+          </div>
+
+          {/* Episode navigation (for TV) */}
+          {hasNav && (
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => currentEpisode > 1 && onEpisodeChange!(currentEpisode - 1)}
+                disabled={currentEpisode <= 1}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-md bg-white/10 text-white text-sm font-medium hover:bg-white/20 transition disabled:opacity-30 disabled:cursor-not-allowed"
               >
-                Open stream in new tab <ExternalLink className="h-4 w-4" />
-              </a>
-            )}
+                <ChevronLeft className="h-4 w-4" /> Prev
+              </button>
+              <span className="text-white/60 text-sm px-2">
+                EP{currentEpisode} / {maxEpisodes}
+              </span>
+              <button
+                onClick={() => currentEpisode < maxEpisodes! && onEpisodeChange!(currentEpisode + 1)}
+                disabled={currentEpisode >= maxEpisodes!}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-md bg-white/10 text-white text-sm font-medium hover:bg-white/20 transition disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                Next <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Season tabs (for TV with multiple seasons) */}
+        {hasSeasons && (
+          <div className="mt-2 flex items-center gap-2 flex-wrap">
+            <span className="text-white/40 text-xs mr-1">Seasons:</span>
+            {seasonTabs!.map((s) => (
+              <button
+                key={s}
+                onClick={() => onSeasonChange!(s)}
+                className={`px-3 py-1 rounded text-sm font-medium transition ${
+                  currentSeason === s
+                    ? "bg-[#e50914] text-white"
+                    : "bg-white/10 text-white/60 hover:text-white hover:bg-white/20"
+                }`}
+              >
+                S{String(s).padStart(2, "0")}
+              </button>
+            ))}
           </div>
         )}
-
-        {(mode === "hls" || mode === "mp4" || mode === "loading") && (
-          <video
-            ref={videoRef}
-            controls
-            autoPlay
-            poster={poster}
-            className="h-full w-full"
-            title={title}
-          />
-        )}
-
-        {mode === "embed" && embedUrl && (
-          <iframe
-            src={embedUrl}
-            title={title}
-            allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-            allowFullScreen
-            referrerPolicy="origin"
-            className="h-full w-full border-0"
-          />
-        )}
-      </div>
-
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-center text-white/70 text-sm">
-        {title}
       </div>
     </div>
   );

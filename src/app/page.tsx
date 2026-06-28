@@ -93,7 +93,19 @@ interface DetailState { item: DisplayItem; episode?: string; }
 export default function Page() {
   const [view, setView] = useState<View>("home");
   const [detail, setDetail] = useState<DetailState | null>(null);
-  const [player, setPlayer] = useState<{ title: string; streamUrl?: string; embedUrl?: string; poster?: string; } | null>(null);
+  const [player, setPlayer] = useState<{
+    title: string;
+    streamUrl?: string;
+    embedUrl?: string;
+    poster?: string;
+    // TV show navigation
+    seasonTabs?: number[];
+    currentSeason?: number;
+    currentEpisode?: number;
+    maxEpisodes?: number;
+    onSeasonChange?: (season: number) => void;
+    onEpisodeChange?: (episode: number) => void;
+  } | null>(null);
 
   const openDetail = (item: DisplayItem, episode?: string) => {
     setDetail({ item, episode });
@@ -114,7 +126,7 @@ export default function Page() {
         }
       }
       try {
-        // Use the h5-api play endpoint directly (same as movie-box.co)
+        // Use the play endpoint (via our proxy with signed JWT)
         const result = await fetchPlayDirect(String(item.id), se, ep);
         const allStreams = [
           ...(result.streams || []),
@@ -130,11 +142,40 @@ export default function Page() {
           });
           const streamUrl = best.url || best.playUrl || best.streamUrl;
           if (streamUrl) {
-            setPlayer({
-              title: item.type === "tv" && episode ? `${item.title} - ${episode}` : item.title,
+            // For TV shows, add navigation callbacks
+            const isTv = item.type === "tv";
+            const playerState: any = {
+              title: isTv && episode ? `${item.title} - ${episode}` : item.title,
               streamUrl,
               poster: item.backdrop || item.poster,
-            });
+            };
+
+            if (isTv) {
+              // Fetch season info to build navigation
+              try {
+                const seasonsRes = await fetch(`/api/moviebox?action=seasons&subjectId=${item.id}`);
+                const seasonsData = await seasonsRes.json();
+                const seasons = seasonsData?.seasons?.seasons || [];
+                if (seasons.length > 0) {
+                  const currentSe = se || seasons[0].se;
+                  const seasonInfo = seasons.find((s: any) => s.se === currentSe) || seasons[0];
+                  const maxEp = seasonInfo?.maxEp || 10;
+
+                  playerState.seasonTabs = seasons.map((s: any) => s.se);
+                  playerState.currentSeason = currentSe;
+                  playerState.currentEpisode = ep || 1;
+                  playerState.maxEpisodes = maxEp;
+                  playerState.onSeasonChange = (newSe: number) => {
+                    playTitle(item, `S${newSe}E1`);
+                  };
+                  playerState.onEpisodeChange = (newEp: number) => {
+                    playTitle(item, `S${currentSe}E${newEp}`);
+                  };
+                }
+              } catch { /* navigation optional */ }
+            }
+
+            setPlayer(playerState);
             useStore.getState().addToHistory({
               id: typeof item.id === "string" ? hashStr(item.id) : item.id,
               type: item.type, title: item.title, poster: item.poster || "",
@@ -185,7 +226,19 @@ export default function Page() {
       <Footer />
       <BottomNav view={view} setView={setView} />
       {player && (
-        <Player title={player.title} streamUrl={player.streamUrl} embedUrl={player.embedUrl} poster={player.poster} onClose={() => setPlayer(null)} />
+        <Player
+          title={player.title}
+          streamUrl={player.streamUrl}
+          embedUrl={player.embedUrl}
+          poster={player.poster}
+          onClose={() => setPlayer(null)}
+          seasonTabs={player.seasonTabs}
+          currentSeason={player.currentSeason}
+          currentEpisode={player.currentEpisode}
+          maxEpisodes={player.maxEpisodes}
+          onSeasonChange={player.onSeasonChange}
+          onEpisodeChange={player.onEpisodeChange}
+        />
       )}
     </div>
   );
@@ -1063,20 +1116,39 @@ function DetailView({ item, initialEpisode, onPlay, onBack, onOpen }: {
         {/* TV Episodes */}
         {mergedItem.type === "tv" && (
           <section className="mt-10">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
               <h2 className="text-xl font-bold">Episodes</h2>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-white/50">Season</span>
-                <select
-                  value={selectedSeason}
-                  onChange={(e) => setSelectedSeason(Number(e.target.value))}
-                  className="bg-[#1a1a1d] border border-white/20 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:border-[#e50914]"
-                >
-                  {Array.from({ length: mergedItem.seasons || 1 }, (_, i) => i + 1).map((s) => (
-                    <option key={s} value={s} className="bg-[#0d0d0f]">{s}</option>
+              {/* Season tabs — like movie-box.co (S01, S02, etc.) */}
+              {liveSeasons?.seasons?.length > 1 ? (
+                <div className="flex items-center gap-2 flex-wrap">
+                  {liveSeasons.seasons.map((s: any) => (
+                    <button
+                      key={s.se}
+                      onClick={() => setSelectedSeason(s.se)}
+                      className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${
+                        selectedSeason === s.se
+                          ? "bg-[#e50914] text-white"
+                          : "bg-[#1a1a1d] text-white/60 hover:text-white hover:bg-white/10"
+                      }`}
+                    >
+                      S{String(s.se).padStart(2, "0")}
+                    </button>
                   ))}
-                </select>
-              </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-white/50">Season</span>
+                  <select
+                    value={selectedSeason}
+                    onChange={(e) => setSelectedSeason(Number(e.target.value))}
+                    className="bg-[#1a1a1d] border border-white/20 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:border-[#e50914]"
+                  >
+                    {Array.from({ length: mergedItem.seasons || 1 }, (_, i) => i + 1).map((s) => (
+                      <option key={s} value={s} className="bg-[#0d0d0f]">{s}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
               {episodes.map((ep) => {
