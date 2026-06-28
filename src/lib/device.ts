@@ -57,34 +57,42 @@ function generateFingerprint(): DeviceFingerprint {
   return { device_id, mac, imei };
 }
 
+// Static fallback (used when cookies() fails in Vercel serverless cold start)
+const FALLBACK_FINGERPRINT: DeviceFingerprint = {
+  device_id: "z3xb0xfallback01",
+  mac: "00:1A:2B:3C:4D:5E",
+  imei: "490154203237518",
+};
+
 /**
  * Get the per-browser device fingerprint from cookie, or generate + set a new one.
- * MUST be called from a Route Handler or Server Action (uses next/headers cookies()).
+ * Falls back to a static fingerprint if cookies() is unavailable (Vercel cold start).
  */
 export async function getDeviceFingerprint(): Promise<DeviceFingerprint> {
-  const cookieStore = await cookies();
-  const existing = cookieStore.get(COOKIE_NAME);
+  try {
+    const cookieStore = await cookies();
+    const existing = cookieStore.get(COOKIE_NAME);
 
-  if (existing?.value) {
-    try {
-      const parsed = JSON.parse(existing.value) as DeviceFingerprint;
-      if (parsed.device_id && parsed.mac && parsed.imei) {
-        return parsed;
-      }
-    } catch {
-      // invalid cookie, regenerate
+    if (existing?.value) {
+      try {
+        const parsed = JSON.parse(existing.value) as DeviceFingerprint;
+        if (parsed.device_id && parsed.mac && parsed.imei) {
+          return parsed;
+        }
+      } catch {}
     }
+
+    const fingerprint = generateFingerprint();
+    cookieStore.set(COOKIE_NAME, JSON.stringify(fingerprint), {
+      httpOnly: true,
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 365,
+      path: "/",
+    });
+    return fingerprint;
+  } catch {
+    return FALLBACK_FINGERPRINT;
   }
-
-  const fingerprint = generateFingerprint();
-  cookieStore.set(COOKIE_NAME, JSON.stringify(fingerprint), {
-    httpOnly: true,
-    sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 365, // 1 year
-    path: "/",
-  });
-
-  return fingerprint;
 }
 
 /**
@@ -93,18 +101,24 @@ export async function getDeviceFingerprint(): Promise<DeviceFingerprint> {
  * Other values mean "use this region's bypass IP".
  */
 export async function getRegion(): Promise<string> {
-  const cookieStore = await cookies();
-  return cookieStore.get(REGION_COOKIE_NAME)?.value || DEFAULT_REGION;
+  try {
+    const cookieStore = await cookies();
+    return cookieStore.get(REGION_COOKIE_NAME)?.value || DEFAULT_REGION;
+  } catch {
+    return DEFAULT_REGION;
+  }
 }
 
 export async function setRegion(region: string): Promise<void> {
-  const cookieStore = await cookies();
-  cookieStore.set(REGION_COOKIE_NAME, region, {
-    httpOnly: false,
-    sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 365,
-    path: "/",
-  });
+  try {
+    const cookieStore = await cookies();
+    cookieStore.set(REGION_COOKIE_NAME, region, {
+      httpOnly: false,
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 365,
+      path: "/",
+    });
+  } catch {}
 }
 
 /**
@@ -117,24 +131,18 @@ export async function setRegion(region: string): Promise<void> {
  *   4. fall back to "" if nothing (caller can handle)
  */
 export async function getUserRealIp(): Promise<string> {
-  const headerStore = await headers();
-
-  // Cloudflare
-  const cfIp = headerStore.get("cf-connecting-ip");
-  if (cfIp && isValidIp(cfIp)) return cfIp;
-
-  // Nginx / direct proxy
-  const realIp = headerStore.get("x-real-ip");
-  if (realIp && isValidIp(realIp)) return realIp;
-
-  // X-Forwarded-For: client, proxy1, proxy2, ...
-  // The leftmost is the original client
-  const xff = headerStore.get("x-forwarded-for");
-  if (xff) {
-    const first = xff.split(",")[0]?.trim();
-    if (first && isValidIp(first)) return first;
-  }
-
+  try {
+    const headerStore = await headers();
+    const cfIp = headerStore.get("cf-connecting-ip");
+    if (cfIp && isValidIp(cfIp)) return cfIp;
+    const realIp = headerStore.get("x-real-ip");
+    if (realIp && isValidIp(realIp)) return realIp;
+    const xff = headerStore.get("x-forwarded-for");
+    if (xff) {
+      const first = xff.split(",")[0]?.trim();
+      if (first && isValidIp(first)) return first;
+    }
+  } catch {}
   return "";
 }
 
@@ -181,7 +189,9 @@ export async function getTimezone(): Promise<string> {
 }
 
 export async function resetDeviceFingerprint(): Promise<DeviceFingerprint> {
-  const cookieStore = await cookies();
-  cookieStore.delete(COOKIE_NAME);
+  try {
+    const cookieStore = await cookies();
+    cookieStore.delete(COOKIE_NAME);
+  } catch {}
   return getDeviceFingerprint();
 }

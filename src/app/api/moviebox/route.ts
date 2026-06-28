@@ -51,31 +51,10 @@ async function cached<T>(key: string, fn: () => Promise<T>, ttlMs: number = CACH
 }
 
 // === Pre-warm cache on server startup ===
-// Fires off background fetches so the first user never waits for a cold cache.
-// Errors are silently ignored — the cache will just be cold if MovieBox is unreachable.
-let warmedUp = false;
-async function warmUpCache() {
-  if (warmedUp) return;
-  warmedUp = true;
-  // Fire all fetches in parallel, don't await — let them populate the cache in background
-  Promise.allSettled([
-    cached("home", () => getHomeData().then((raw) => {
-      const operating: any[] = raw?.data?.operatingList || [];
-      const sections = operating
-        .filter((op) => op.type !== "BANNER" && op.subjects?.length > 0)
-        .map((op) => ({
-          title: op.title || op.type,
-          type: op.type,
-          items: trimItems(op.subjects).slice(0, 12),
-        }))
-        .filter((s: any) => s.items.length > 0);
-      return { banners: sections[0]?.items?.slice(0, 6) || [], sections, platforms: (raw?.data?.platformList || []).map((p) => ({ name: p.name })) };
-    })),
-    cached("hot", () => trimItems(normalizeItemsRaw(getSearchRank()))),
-  ]).catch(() => { /* silent */ });
-}
-// Kick off warm-up (doesn't block module load)
-warmUpCache();
+// DISABLED on Vercel serverless — cookies()/headers() can't be called outside request scope.
+// The first request will just be slower; cache fills from real requests.
+// async function warmUpCache() { ... }
+// warmUpCache();
 
 // Extract raw subject list from any API response shape
 function normalizeItemsRaw(raw: any): any[] {
