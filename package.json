@@ -12,8 +12,8 @@
     "db:migrate": "prisma migrate dev",
     "db:reset": "prisma migrate reset",
     "build:cloudflare": "npx opennextjs-cloudflare build",
-    "deploy:cloudflare": "npx opennextjs-cloudflare build && npx wrangler deploy",
-    "preview:cloudflare": "npx opennextjs-cloudflare build && npx wrangler dev"
+    "deploy:cloudflare": "npx opennextjs-cloudflare build && bunx wrangler deploy",
+    "preview:cloudflare": "npx opennextjs-cloudflare build && bunx wrangler dev"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
