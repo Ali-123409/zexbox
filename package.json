@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000 2>&1 | tee dev.log",
-    "build": "next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
+    "build": "npx opennextjs-cloudflare build",
     "start": "NODE_ENV=production bun .next/standalone/server.js 2>&1 | tee server.log",
     "lint": "eslint .",
     "db:push": "prisma db push",
@@ -13,7 +13,8 @@
     "db:reset": "prisma migrate reset",
     "build:cloudflare": "npx opennextjs-cloudflare build",
     "deploy:cloudflare": "npx opennextjs-cloudflare build && bunx wrangler deploy",
-    "preview:cloudflare": "npx opennextjs-cloudflare build && bunx wrangler dev"
+    "preview:cloudflare": "npx opennextjs-cloudflare build && bunx wrangler dev",
+    "build:next": "next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
