@@ -24,6 +24,9 @@ export interface DownloadEntry {
   status: "queued" | "downloading" | "complete" | "failed";
   progress: number;
   cost: number;
+  streamUrl?: string;       // Real stream URL from MovieBox
+  blobUrl?: string;         // Local blob URL after download (for offline playback)
+  downloadSpeed?: string;   // Current download speed (e.g. "2.3 MB/s")
 }
 
 export interface WatchlistEntry {
@@ -135,29 +138,88 @@ export const useStore = create<StoreState>()(
           progress: 0,
         };
         set((s) => ({ downloads: [newEntry, ...s.downloads] }));
-        // Kick off simulated progress
-        const interval = setInterval(() => {
-          const dl = get().downloads.find((d) => d.id === entry.id);
-          if (!dl) {
-            clearInterval(interval);
-            return;
-          }
-          if (dl.progress >= 100) {
-            clearInterval(interval);
-            return;
-          }
+
+        // === REAL DOWNLOAD: fetch the actual MP4 file with progress tracking ===
+        if (entry.streamUrl) {
+          (async () => {
+            const downloadId = entry.id;
+            const updateProgress = (progress: number, speed?: string) => {
+              set((s) => ({
+                downloads: s.downloads.map((d) =>
+                  d.id === downloadId
+                    ? { ...d, progress: Math.min(100, progress), downloadSpeed: speed, status: progress >= 100 ? "complete" : "downloading" }
+                    : d
+                ),
+              }));
+            };
+
+            try {
+              const response = await fetch(entry.streamUrl!);
+              if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+              const contentLength = Number(response.headers.get("content-length") || 0);
+              const totalMB = contentLength > 0 ? contentLength / (1024 * 1024) : entry.sizeMB;
+
+              const reader = response.body?.getReader();
+              if (!reader) throw new Error("No readable stream");
+
+              const chunks: Uint8Array[] = [];
+              let receivedBytes = 0;
+              const startTime = Date.now();
+
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                chunks.push(value);
+                receivedBytes += value.length;
+
+                const progress = contentLength > 0 ? (receivedBytes / contentLength) * 100 : 0;
+                const elapsedSec = (Date.now() - startTime) / 1000;
+                const speedMBps = elapsedSec > 0 ? (receivedBytes / (1024 * 1024)) / elapsedSec : 0;
+                const speedStr = speedMBps >= 1 ? `${speedMBps.toFixed(1)} MB/s` : `${(speedMBps * 1024).toFixed(0)} KB/s`;
+
+                updateProgress(progress, speedStr);
+              }
+
+              // Create blob and save to device
+              const blob = new Blob(chunks, { type: "video/mp4" });
+              const blobUrl = URL.createObjectURL(blob);
+
+              // Trigger browser download to save the file
+              const a = document.createElement("a");
+              a.href = blobUrl;
+              a.download = `${entry.title} (${entry.quality}).mp4`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+
+              // Mark as complete with blob URL for offline playback
+              set((s) => ({
+                downloads: s.downloads.map((d) =>
+                  d.id === downloadId
+                    ? { ...d, progress: 100, status: "complete", blobUrl, sizeMB: Math.round(totalMB) }
+                    : d
+                ),
+              }));
+            } catch (e: any) {
+              set((s) => ({
+                downloads: s.downloads.map((d) =>
+                  d.id === downloadId
+                    ? { ...d, status: "failed", downloadSpeed: undefined }
+                    : d
+                ),
+              }));
+            }
+          })();
+        } else {
+          // Fallback: no stream URL — mark as failed
           set((s) => ({
             downloads: s.downloads.map((d) =>
-              d.id === entry.id
-                ? {
-                    ...d,
-                    progress: Math.min(100, d.progress + 5 + Math.random() * 10),
-                    status: d.progress + 5 >= 100 ? "complete" : "downloading",
-                  }
-                : d
+              d.id === entry.id ? { ...d, status: "failed" } : d
             ),
           }));
-        }, 800);
+        }
         return true;
       },
       tickDownload: (id) =>

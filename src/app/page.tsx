@@ -999,21 +999,58 @@ function DetailView({ item, initialEpisode, onPlay, onBack, onOpen }: {
   }, [liveRecs, item]);
 
   const qualityOptions = [
-    { label: "360p", cost: 5, sizeMB: 350 },
-    { label: "480p", cost: 10, sizeMB: 700 },
-    { label: "720p", cost: 20, sizeMB: 1500 },
-    { label: "1080p", cost: 40, sizeMB: 3500 },
+    { label: "360p", cost: 5, res: 360 },
+    { label: "480p", cost: 10, res: 480 },
+    { label: "720p", cost: 20, res: 720 },
+    { label: "1080p", cost: 40, res: 1080 },
   ];
 
-  const handleDownload = (q: typeof qualityOptions[number]) => {
+  const handleDownload = async (q: typeof qualityOptions[number]) => {
+    // First, fetch the real stream URL from MovieBox
+    let streamUrl: string | undefined;
+    let actualSizeMB = q.res >= 720 ? 1500 : q.res >= 480 ? 700 : 350;
+
+    try {
+      // Build the play URL with se/ep for TV
+      let playUrl = `/api/moviebox?action=play&subjectId=${item.id}`;
+      if (item.type === "tv") {
+        playUrl += `&se=${selectedSeason}&ep=1`;
+      }
+
+      const playRes = await fetch(playUrl).then((r) => r.json());
+      const allStreams = [
+        ...(playRes.streams || []),
+        ...(playRes.hls || []),
+        ...(playRes.dash || []),
+      ];
+
+      if (allStreams.length === 0) {
+        toast.error("No streams available", { description: "This title can't be downloaded right now." });
+        return;
+      }
+
+      // Find the stream matching the requested resolution (or closest lower)
+      const matching = allStreams
+        .filter((s: any) => Number(s.resolutions || s.resolution || 0) <= q.res)
+        .sort((a: any, b: any) => Number(b.resolutions || b.resolution) - Number(a.resolutions || a.resolution));
+
+      const stream = matching[0] || allStreams[0];
+      streamUrl = stream.url;
+      actualSizeMB = stream.size ? Math.round(Number(stream.size) / (1024 * 1024)) : actualSizeMB;
+    } catch {
+      toast.error("Failed to get stream URL", { description: "Please try again." });
+      return;
+    }
+
     const ok = startDownload({
       id: typeof item.id === "string" ? hashStr(item.id) : item.id,
       type: item.type, title: item.title, poster: item.poster || "",
-      quality: q.label, sizeMB: q.sizeMB, cost: q.cost,
+      quality: q.label, sizeMB: actualSizeMB, cost: q.cost,
+      streamUrl,
     });
     if (ok) {
       toast.success(`Download started: ${item.title} (${q.label})`, {
-        description: `-${q.cost} coins · ${q.sizeMB >= 1000 ? (q.sizeMB / 1000).toFixed(1) + " GB" : q.sizeMB + " MB"}`,
+        description: `-${q.cost} coins · ${actualSizeMB >= 1000 ? (actualSizeMB / 1000).toFixed(1) + " GB" : actualSizeMB + " MB"}`,
       });
     } else {
       toast.error("Not enough coins", { description: `You need ${q.cost} coins to download ${q.label}.` });
@@ -1209,7 +1246,7 @@ function DetailView({ item, initialEpisode, onPlay, onBack, onOpen }: {
                     </span>
                   </div>
                   <p className="text-xs text-white/50 mt-1">
-                    {q.sizeMB >= 1000 ? (q.sizeMB / 1000).toFixed(1) + " GB" : q.sizeMB + " MB"}
+                    ~{q.res >= 720 ? "1.5 GB" : q.res >= 480 ? "700 MB" : "350 MB"}
                   </p>
                 </button>
               );
@@ -1264,7 +1301,7 @@ function DownloadsView() {
 
       {active.length > 0 && (
         <section>
-          <h2 className="text-sm font-semibold text-white/60 mb-3">Active</h2>
+          <h2 className="text-sm font-semibold text-white/60 mb-3">Active Downloads</h2>
           <div className="space-y-2">
             {active.map((d) => (
               <div key={d.id} className="flex items-center gap-3 p-3 rounded-lg bg-[#1a1a1d] border border-white/10">
@@ -1273,8 +1310,15 @@ function DownloadsView() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">{d.title}</p>
-                  <p className="text-xs text-white/50">{d.quality} · {d.sizeMB >= 1000 ? (d.sizeMB / 1000).toFixed(1) + " GB" : d.sizeMB + " MB"}</p>
+                  <p className="text-xs text-white/50">
+                    {d.quality} · {d.sizeMB >= 1000 ? (d.sizeMB / 1000).toFixed(1) + " GB" : d.sizeMB + " MB"}
+                    {d.downloadSpeed && d.status === "downloading" && (
+                      <span className="text-green-400 ml-2">· {d.downloadSpeed}</span>
+                    )}
+                    {d.status === "failed" && <span className="text-red-400 ml-2">· Failed</span>}
+                  </p>
                   <Progress value={d.progress} className="h-1.5 mt-1.5" />
+                  <p className="text-[10px] text-white/40 mt-0.5">{Math.round(d.progress)}%</p>
                 </div>
                 <button onClick={() => removeDownload(d.id)} className="shrink-0 p-2 text-white/40 hover:text-red-400 transition" aria-label="Cancel">
                   <X className="h-4 w-4" />
@@ -1287,7 +1331,7 @@ function DownloadsView() {
 
       {completed.length > 0 && (
         <section>
-          <h2 className="text-sm font-semibold text-white/60 mb-3">Ready to watch offline</h2>
+          <h2 className="text-sm font-semibold text-white/60 mb-3">Downloaded — Ready to Watch Offline</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {completed.map((d) => (
               <div key={d.id} className="flex items-center gap-3 p-3 rounded-lg bg-[#1a1a1d] border border-white/10">
@@ -1297,7 +1341,22 @@ function DownloadsView() {
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">{d.title}</p>
                   <p className="text-xs text-white/50">{d.quality} · {d.sizeMB >= 1000 ? (d.sizeMB / 1000).toFixed(1) + " GB" : d.sizeMB + " MB"}</p>
-                  <Badge variant="secondary" className="mt-1 text-xs">Downloaded</Badge>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge className="bg-green-600/20 text-green-300 border border-green-500/30 text-xs">Saved to device</Badge>
+                    {d.blobUrl && (
+                      <button
+                        onClick={() => {
+                          const a = document.createElement("a");
+                          a.href = d.blobUrl!;
+                          a.download = `${d.title} (${d.quality}).mp4`;
+                          a.click();
+                        }}
+                        className="text-xs text-[#e50914] hover:underline"
+                      >
+                        Re-download
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <button onClick={() => removeDownload(d.id)} className="shrink-0 p-2 text-white/40 hover:text-red-400" aria-label="Remove">
                   <Trash2 className="h-4 w-4" />
