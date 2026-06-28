@@ -156,12 +156,28 @@ function isValidIp(ip: string): boolean {
 /**
  * Get the IP to send to MovieBox as X-Forwarded-For.
  *
- * - If user picked "AUTO" (default): use their REAL IP from the request
  * - If user picked a specific region: use that region's bypass IP
+ * - If "AUTO": check if we're on a blocked datacenter IP (Vercel, AWS, etc.)
+ *   - If blocked: use Nigeria bypass IP
+ *   - If not blocked: use the user's real IP
  *
- * If we can't determine the real IP (e.g. local dev), fall back to Nigeria's IP
- * so the app still works during development.
+ * MovieBox blocks known datacenter/cloud IPs (Vercel, AWS, GCP, etc.)
+ * but allows residential IPs. Since we can't detect residential vs datacenter
+ * reliably, we check a list of known datacenter IP ranges.
  */
+const DATACENTER_IP_PREFIXES = [
+  "8.", "13.", "23.", "35.", "44.", "50.", "52.", "54.", "63.", "64.",
+  "65.", "66.", "67.", "68.", "70.", "72.", "74.", "75.", "76.", "99.",
+  "100.", "104.", "107.", "108.", "142.", "143.", "144.", "146.", "148.",
+  "152.", "156.", "162.", "164.", "174.", "176.", "184.", "192.", "198.",
+  "199.", "204.", "205.", "206.", "207.", "208.", "209.", "213.", "216.",
+];
+
+function isDatacenterIp(ip: string): boolean {
+  if (!ip) return true;
+  return DATACENTER_IP_PREFIXES.some(prefix => ip.startsWith(prefix));
+}
+
 export async function getBypassIp(): Promise<string> {
   const region = await getRegion();
 
@@ -172,9 +188,14 @@ export async function getBypassIp(): Promise<string> {
 
   // AUTO: try to use the user's real IP
   const realIp = await getUserRealIp();
-  if (realIp) return realIp;
 
-  // Fall back to Nigeria IP if we can't determine the real IP (e.g. local dev)
+  // If the real IP is a datacenter IP (Vercel, AWS, etc.), MovieBox will block it.
+  // Fall back to Nigeria bypass IP so the app works on Vercel.
+  if (realIp && !isDatacenterIp(realIp)) {
+    return realIp;
+  }
+
+  // Datacenter IP detected (or no IP) — use Nigeria bypass IP
   return REGIONS.NG.ip;
 }
 
