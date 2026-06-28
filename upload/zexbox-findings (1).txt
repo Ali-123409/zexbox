@@ -1,0 +1,1000 @@
+================================================================================
+ ZEX BOX — COMPLETE FINDINGS & API DOCUMENTATION
+ Reverse-engineered from MovieBox APK v3.0.05.0711.03 (com.community.oneroom)
+================================================================================
+
+Generated: 2026-06-27
+Source: MovieBox APK + movie-box.co website analysis
+
+================================================================================
+ TABLE OF CONTENTS
+================================================================================
+
+1.  APP OVERVIEW
+2.  ALL API KEYS & SECRETS
+3.  ALL DOMAINS & SERVERS
+4.  TWO API TIERS (Mobile Signed API + Public H5 API)
+5.  SIGNING ALGORITHM (VERIFIED WORKING)
+6.  GUEST AUTH FLOW (VERIFIED WORKING)
+7.  REGION/IP HANDLING
+8.  ALL 70+ API ENDPOINTS (Mobile API)
+9.  PUBLIC H5 API ENDPOINTS (Website API)
+10. REAL STREAMING URLS (Verified Playing)
+11. IMAGE CDN & OPTIMIZATION
+12. DEVICE FINGERPRINT (Per-Browser)
+13. ARCHITECTURE & PERFORMANCE
+14. HOW TO USE / QUICK START
+15. LEGAL & ETHICAL NOTES
+
+================================================================================
+ 1. APP OVERVIEW
+================================================================================
+
+App Name: MovieBox
+Package: com.community.oneroom
+Developer: Transsion Holdings
+Version: 3.0.05.0711.03
+APK Size: 63MB
+Decompiled Files: 39,107 Java files (3,422 app-specific, ~35,000 third-party)
+
+The app is a free movie/TV streaming service popular in Africa, India, Pakistan,
+and Southeast Asia. It uses a signed API with guest authentication — no account
+required to browse or watch content.
+
+================================================================================
+ 2. ALL API KEYS & SECRETS
+================================================================================
+
++------------------------------+--------------------------------------------------+
+| Key                          | Value                                            |
++------------------------------+--------------------------------------------------+
+| Gateway Secret (Production)  | 76iRl07s0xSN9jqmEWAt79EBJZulIQIsV64FZr2O        |
+| Gateway Secret (Test)        | Xqn2nnO41/L92o1iuXhSLHTbXvY4Z5ZZ62m8mSLA        |
+| OpenSubtitles API Key        | ZRN9QpqcTxje5UH3bV1RuugwitxkqB53                |
+| OpenSubtitles User-Agent     | player2024                                       |
+| Aliyun Player License        | volXpoYXKsoRJDDPt89df7215938a4eb88c536e67cd49923c |
+| AdMob App ID                 | ca-app-pub-5464101117258718~2034480240           |
+| TPush App ID                 | 8534b43bc794414987957009b5060377                 |
+| TPush App Key                | 8fc969cd4a4b4e9190c38322875b0f09                 |
+| AppLovin Ad Unit             | 2301069UF9YjuO                                   |
+| Mini App SDK Version         | 9.3.2-mb                                         |
+| Firebase API Key             | AIzaSyAOOABPs-ep_1iQSfJLKXgpGmrASCqM7B4         |
+| Firebase Project             | spa-mb-backupsite                                |
+| Google Analytics ID          | G-CJSG3GJM85                                     |
+| App Key (base64)             | d3d3Lm1vdmllYm94b25saW5lLmNvbQ==                |
+|                              | (decodes to "www.movieboxonline.com")            |
++------------------------------+--------------------------------------------------+
+
+NOTE: The Gateway Secret is used as the HMAC-MD5 key. It must be Base64-decoded
+before use: Buffer.from("76iRl07s0xSN9jqmEWAt79EBJZulIQIsV64FZr2O", "base64")
+
+================================================================================
+ 3. ALL DOMAINS & SERVERS
+================================================================================
+
+PRIMARY API HOSTS (Mobile Signed API):
+  api6.aoneroom.com    ← Default, use this one
+  api3.aoneroom.com    ← Fallback
+  api4.aoneroom.com    ← Fallback (CloudFront)
+  api5.aoneroom.com    ← Fallback
+  api4sg.aoneroom.com  ← Singapore
+  api6sg.aoneroom.com  ← Singapore
+  api.inmoviebox.com   ← MovieBox-specific
+
+PUBLIC H5 API (Website API — NO SIGNING REQUIRED):
+  h5-api.aoneroom.com  ← CORS-enabled, public, used by movie-box.co
+
+CDN DOMAINS:
+  pbcdn.aoneroom.com     ← Image CDN (posters, backdrops)
+  pbcdnw.aoneroom.com    ← Image CDN (web-optimized)
+  acdn.aoneroom.com      ← Video/images CDN
+  pacdn.aoneroom.com     ← Push asset CDN
+  bcdn4.hakunaymatata.com ← Video stream CDN (MP4 files)
+  hcdn3.hakunaymatata.com ← Video stream CDN (alt)
+
+OTHER DOMAINS:
+  v.aoneroom.com         ← Video deep link domain
+  h5.aoneroom.com        ← H5 web app pages
+  h5-static.aoneroom.com ← Static H5 (privacy/terms)
+  h5-aoneroom.com        ← Fission/referral page
+  mse-api.aoneroom.com   ← MSE API
+  apigateway.tmctool.com ← API Gateway host
+  moviebox.ng            ← Nigeria website
+  v.moviebox.ng          ← Nigeria video domain
+  m.mvbrowse.com         ← Mobile browse domain
+
+PUSH & ANALYTICS:
+  gslb.shalltry.com      ← Global Server Load Balancing
+  dsu.shalltry.com       ← Data service upload
+  dsc.shalltry.com       ← Data service config
+  ire-oneid.shalltry.com ← OneID identity service
+  api.twibida.com        ← Push notification API
+  tracking.twibida.com   ← Push analytics tracking
+
+MINI-APP & PAYMENTS:
+  api.eagllwin.com       ← Mini-app config API
+  api.byte-app.com       ← Mini-app runtime API
+  api.sunnbird.com       ← Mini-app login API
+  api.paynicorn.com      ← Payment gateway
+  cashier-serverweb.paynicorn.com ← Payment cashier web
+
+================================================================================
+ 3. ALL DOMAINS & SERVERS (Complete List)
+================================================================================
+
+Production Domains:
+  api3.aoneroom.com          — Primary API host
+  api4.aoneroom.com          — API host (fallback)
+  api4sg.aoneroom.com        — API host (Singapore)
+  api5.aoneroom.com          — API host (fallback)
+  api6.aoneroom.com          — DEFAULT API host
+  api6sg.aoneroom.com        — API host (Singapore)
+  api.inmoviebox.com         — MovieBox-specific API
+  h5-api.aoneroom.com        — Public H5 API (CORS-enabled)
+  acdn.aoneroom.com          — CDN (video/images)
+  pacdn.aoneroom.com         — Push asset CDN
+  pbcdn.aoneroom.com         — Image CDN
+  pbcdnw.aoneroom.com        — Image CDN (web-optimized)
+  v.aoneroom.com             — Video deep link domain
+  h5.aoneroom.com            — H5 web app pages
+  h5-static.aoneroom.com     — Static H5 (privacy/terms)
+  h5-aoneroom.com            — Fission/referral page
+  mse-api.aoneroom.com       — MSE API
+  apigateway.tmctool.com     — API Gateway host
+  moviebox.ng                — Nigeria website
+  v.moviebox.ng              — Nigeria video domain
+  m.mvbrowse.com             — Mobile browse domain
+
+Test Domains:
+  test-mse-api.aoneroom.com  — MSE API (test)
+
+Shalltry Domains:
+  gslb.shalltry.com          — Global Server Load Balancing
+  test-gslb.shalltry.com     — GSLB (test)
+  dsu.shalltry.com           — Data service upload
+  dsc.shalltry.com           — Data service config
+  dsu-a.shalltry.com         — Data service (alternate)
+  cdn.shalltry.com           — General CDN
+  ire-oneid.shalltry.com     — OneID identity service
+  cloud-config-oss.shalltry.com — Remote config
+  app-manage-api.shalltry.com — App update check
+
+Twibida (Push):
+  api.twibida.com            — Push notification API
+  test-api.twibida.com      — Push notification API (test)
+  tracking.twibida.com       — Push analytics tracking
+
+Mini-App:
+  api.eagllwin.com           — Mini-app config API
+  api.byte-app.com           — Mini-app runtime API
+  api-static.byte-app.com    — Mini-app static API
+  app-oss.byte-app.com       — Mini-app OSS storage
+  api.sunnbird.com           — Mini-app login API
+
+Payments:
+  api.paynicorn.com          — Payment gateway
+  test.paynicorn.com         — Payment gateway (test)
+  cashier-serverweb.paynicorn.com — Payment cashier web
+
+Game Centers:
+  api.ahagamecenter.com      — AHA game center API
+  empower-api.palmplaystore.com — PalmStore empower API
+  ind-empower-api.palmplaystore.com — PalmStore India API
+  feature-api.palmplaystore.com — PalmStore feature API
+
+External:
+  vip-api.opensubtitles.com  — OpenSubtitles VIP API
+
+================================================================================
+ 4. TWO API TIERS
+================================================================================
+
+The MovieBox backend exposes TWO different API tiers:
+
+--- TIER 1: Mobile Signed API (api6.aoneroom.com) ---
+  - Used by the Android APK
+  - Requires HMAC-MD5 signing on every request
+  - Requires guest JWT for most endpoints
+  - Full access to all 70+ endpoints
+  - Base path: /wefeed-mobile-bff/
+
+--- TIER 2: Public H5 API (h5-api.aoneroom.com) ---
+  - Used by movie-box.co website
+  - NO signing required
+  - NO auth required
+  - CORS-enabled (browser can call directly)
+  - Limited endpoints (home, trending, bottom-tabs, everyone-search)
+  - Base path: /wefeed-h5api-bff/
+  - MUCH faster (no signing overhead)
+
+Our app uses BOTH tiers:
+  - Home/trending → h5-api directly from browser (fast)
+  - Detail/play-info/search → mobile API via our proxy (needs JWT)
+
+================================================================================
+ 5. SIGNING ALGORITHM (VERIFIED WORKING)
+================================================================================
+
+Secret: 76iRl07s0xSN9jqmEWAt79EBJZulIQIsV64FZr2O
+HMAC Key: Base64.decode(secret)  ← IMPORTANT: decode the secret first
+
+--- Signing String Construction ---
+
+signingString = METHOD.toUpperCase() + "\n"
+              + (accept_header ?? "") + "\n"
+              + (content_type_header ?? "") + "\n"
+              + (content_length_header ?? "") + "\n"
+              + timestamp + "\n"
+              + (body_md5_hex ?? "") + "\n"
+              + url_path + "?" + sorted_query_params
+
+Where:
+  - body_md5_hex = MD5(body[:102400]) if body exists, else ""
+  - sorted_query_params = alphabetically sorted by key name, NOT URL-encoded
+  - timestamp = Date.now() in milliseconds (string)
+
+--- CRITICAL: Header Rules ---
+
+For GET requests:
+  - Accept: "*/*"        ← must be exactly this
+  - Content-Type: ""     ← DO NOT send this header
+  - Content-Length: ""    ← DO NOT send this header
+  - In the sign string, these appear as empty strings
+
+For POST requests:
+  - Accept: "*/*"
+  - Content-Type: "application/json"
+  - Content-Length: <byte count of body>
+  - All three appear with their actual values in the sign string
+
+--- Signature Computation ---
+
+signature = Base64( HmacMD5( Base64Decode(SECRET), signingString ) )
+
+Header: x-tr-signature: "{timestamp}|2|{signature}"
+
+--- Example (TypeScript) ---
+
+import crypto from "crypto";
+
+const SECRET = "76iRl07s0xSN9jqmEWAt79EBJZulIQIsV64FZr2O";
+const key = Buffer.from(SECRET, "base64");
+
+function md5(s: string) {
+  return crypto.createHash("md5").update(s).digest("hex");
+}
+
+function hmacMd5B64(key: Buffer, data: string) {
+  return crypto.createHmac("md5", key).update(data).digest("base64");
+}
+
+function sortQuery(query: Record<string, string>) {
+  return Object.keys(query).sort()
+    .map(k => `${k}=${query[k]}`)  // NOT URL-encoded
+    .join("&");
+}
+
+const ts = Date.now().toString();
+const method = "GET";
+const path = "/wefeed-mobile-bff/app/config";
+const query = {
+  appkey: "d3d3Lm1vdmllYm94b25saW5lLmNvbQ==",
+  app_version: "3.0.05.0711.03",
+  appid: "1",
+  device: "2",
+  lang: "en",
+};
+
+const body = "";  // empty for GET
+const bodyMd5 = body ? md5(body.slice(0, 102400)) : "";
+const sortedQuery = sortQuery(query);
+const pathWithQuery = `${path}?${sortedQuery}`;
+
+// GET: empty strings for Content-Type and Content-Length
+const signString = [
+  method,        // GET
+  "*/*",         // Accept
+  "",            // Content-Type (empty for GET)
+  "",            // Content-Length (empty for GET)
+  ts,            // timestamp
+  bodyMd5,       // MD5 of body (empty for GET)
+  pathWithQuery  // /path?sorted=query
+].join("\n");
+
+const sig = hmacMd5B64(key, signString);
+
+// Headers to send:
+const headers = {
+  "Accept": "*/*",
+  "x-tr-signature": `${ts}|2|${sig}`,
+  "X-Client-Token": `${ts},${md5(reverseString(ts))}`,
+  "X-Client-Info": JSON.stringify({
+    appkey: "d3d3Lm1vdmllYm94b25saW5lLmNvbQ==",
+    app_version: "3.0.05.0711.03",
+    appid: "1",
+    device: "2",
+    lang: "en",
+    device_id: "a1b2c3d4e5f6g7h8",  // REQUIRED for JWT
+    mac: "00:11:22:33:44:55",        // REQUIRED for JWT
+    imei: "123456789012345",          // REQUIRED for JWT
+  }),
+  "X-Client-Status": "1",
+  "X-Forwarded-For": "102.89.23.1",  // or user's real IP
+  "User-Agent": "okhttp/4.12.0",
+};
+
+================================================================================
+ 6. GUEST AUTH FLOW (VERIFIED WORKING)
+================================================================================
+
+The app uses a silent guest auto-login. No account needed.
+
+--- Step 1: Generate X-Client-Token ---
+
+X-Client-Token = `${timestamp},${MD5(reverse(timestamp))}`
+
+Where:
+  - timestamp = Date.now() in milliseconds (string)
+  - reverse(timestamp) = reverse the string character by character
+  - MD5(reverse(timestamp)) = hex digest
+
+Example:
+  timestamp = "1782576978426"
+  reversed  = "6248796752871"
+  md5       = "4ec140c3ffdb72f33d8f60c54f84d081"
+  token     = "1782576978426,4ec140c3ffdb72f33d8f60c54f84d081"
+
+--- Step 2: Send Request with Device Info ---
+
+CRITICAL: X-Client-Info MUST include device_id, mac, imei fields.
+Without these, the server treats the request as anonymous and does NOT
+issue a JWT.
+
+X-Client-Info JSON:
+{
+  "appkey": "d3d3Lm1vdmllYm94b25saW5lLmNvbQ==",
+  "app_version": "3.0.05.0711.03",
+  "appid": "1",
+  "device": "2",           // 2 = Android
+  "lang": "en",
+  "device_id": "<16-char hex>",   // REQUIRED
+  "mac": "<xx:xx:xx:xx:xx:xx>",   // REQUIRED
+  "imei": "<15-digit number>",    // REQUIRED
+  "timezone": "Africa/Lagos"      // optional
+}
+
+--- Step 3: Server Returns X-User Header ---
+
+The server returns the X-User response header containing JSON:
+
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOjg0MzA5...",
+  "userId": "8430909306308122536",
+  "userType": 0
+}
+
+The "token" field is the guest JWT.
+
+--- Step 4: Use JWT for Authenticated Requests ---
+
+For all subsequent requests, include:
+  Authorization: Bearer <jwt_token>
+
+The JWT is valid for ~50 minutes. The server may also refresh it on any
+request (check X-User header on every response).
+
+--- JWT Acquisition Endpoint ---
+
+POST /wefeed-mobile-bff/subject-api/trending/v2
+Body: {"category":"movie","page":1,"size":1}
+
+This endpoint both returns trending data AND issues the JWT in the
+X-User response header. It's the recommended way to acquire a JWT.
+
+================================================================================
+ 7. REGION/IP HANDLING
+================================================================================
+
+MovieBox blocks server/datacenter IPs but NOT user IPs.
+The APK works in India, Pakistan, Africa, etc. because it sends the
+phone's real IP.
+
+--- How to Set the IP ---
+
+The X-Forwarded-For header tells MovieBox which IP to use.
+Two options:
+
+Option A (DEFAULT): Use the user's real IP
+  - Read from incoming request headers: cf-connecting-ip, x-real-ip, x-forwarded-for
+  - Pass through to MovieBox as X-Forwarded-For
+  - Works worldwide (India, Pakistan, Africa, Europe, Americas)
+
+Option B (OVERRIDE): Use a specific region's IP
+  - For users who want a specific region's content catalog
+  - Available regions:
+    AUTO    — Use my real IP (default)
+    NG      — Nigeria       (102.89.23.1)
+    KE      — Kenya         (41.90.0.1)
+    GH      — Ghana         (41.215.0.1)
+    ZA      — South Africa  (41.0.0.1)
+    EG      — Egypt         (156.200.0.1)
+    TZ      — Tanzania      (41.59.0.1)
+    UG      — Uganda        (41.190.0.1)
+    ET      — Ethiopia      (196.188.0.1)
+
+================================================================================
+ 8. ALL 70+ API ENDPOINTS (Mobile Signed API)
+================================================================================
+
+Base URL: https://api6.aoneroom.com/wefeed-mobile-bff/
+Auth: Most require guest JWT (except where noted)
+
+--- Content & Movies ---
+
+GET  /subject-api/get                  Get movie/show details (param: subjectId)
+GET  /subject-api/play-info            Get video stream URL (param: subjectId) ← STREAMS!
+GET  /subject-api/season-info          Get season/episode list (param: subjectId)
+GET  /subject-api/staff-info           Get cast/crew info (param: subjectId)
+GET  /subject-api/staff-subject-list   Staff-related content
+GET  /subject-api/staff-related        Related content
+GET  /subject-api/see-list-v2          Watch list
+GET  /subject-api/get-stream-captions  Stream subtitles
+GET  /subject-api/get-ext-captions     External captions
+GET  /subject-api/resource-position    Download/stream links
+GET  /subject-api/subtitle-search      Search subtitles
+GET  /subject-api/filter-items         Filter options (genres, countries)
+GET  /subject-api/search-rank          Trending searches (NO AUTH)
+GET  /subject-api/search-rank/v2       Trending searches v2 (NO AUTH)
+GET  /subject-api/bottom-tab           Bottom tab config
+POST /subject-api/search               Search movies/shows
+POST /subject-api/search/v2            Search v2
+POST /subject-api/want-to-see          Mark want-to-see
+POST /subject-api/want-to-see-staff    Want to see for staff
+POST /subject-api/detail-rec           Detail recommendations
+POST /subject-api/play-related-rec     Play-related recs
+POST /subject-api/trending/v2          Trending content ← ALSO ISSUES JWT!
+POST /subject-api/top-rec              Top recommendations (NO AUTH)
+POST /subject-api/genre-top            Genre top lists
+POST /subject-api/list                 List by category (NO AUTH)
+POST /subject-api/have-seen            Mark as seen
+
+--- Short TV ---
+
+GET  /shorts/mini-list                 Short TV list
+GET  /shorts/get-info                  Short TV info
+GET  /shorts/operating                 Operating data
+GET  /shorts/favorite-list             Favorites list
+POST /shorts/reel                      Short TV reel (TikTok-style)
+POST /shorts/favorite                  Favorite short TV
+POST /shorts/most-trending             Most trending
+
+--- Search ---
+
+GET  /subject-api/search-suggest       Search suggestions (NO AUTH)
+POST /search-anaylze/seek              Search analytics
+
+--- Community & Groups ---
+
+GET  /group/list/search                Search groups
+GET  /group/list/my/v2                 My groups
+GET  /group/exist                      Check group exists
+GET  /group/rank                       Group rankings
+GET  /group/list/community-entrance    Community entrance
+GET  /group/get                        Group details
+GET  /group/list/user                  User's groups
+GET  /group/list/class                 Groups by class
+POST /group/class                      Group categories
+POST /group/create                     Create group
+POST /group/join                       Join group
+POST /group/leave                      Leave group
+POST /group/update                     Update group
+POST /group/visit                      Visit group
+POST /group/list/nearby                Nearby groups
+POST /group/list/subject               Subject groups
+
+--- Posts & Comments ---
+
+GET  /post/get                         Get post
+GET  /post/list/likes                  Liked posts
+GET  /post/list/user                   User's posts
+GET  /post/list/user/my                My posts
+GET  /post/explore                     Explore posts
+GET  /post/nearby                      Nearby posts
+GET  /post/list-trending/group         Trending group posts
+GET  /post/list/group                  Group posts
+GET  /post/list/subject                Subject posts
+GET  /post/count/subject               Post count
+GET  /post/list/immersive/v2           Immersive list v2
+POST /post/create                      Create post
+DELETE /post/delete                    Delete post
+POST /post/list/immersive              Immersive list
+POST /post/list/correlation            Correlated posts
+POST /comment                          Create comment
+DELETE /comment                        Delete comment
+POST /comment/like                     Like comment
+GET  /comment/list                     Comment list
+POST /comment/user/list                User comments
+
+--- User & Authentication ---
+
+POST /user-api/register                Register (phone/email)
+POST /user-api/login                   Login (phone/email)
+POST /user-api/third-login             Google login
+POST /user-api/logout                  Logout
+GET  /user-api/info                    User info
+GET  /user-api/profile                 User profile
+GET  /user-api/profile/v2              User profile v2
+POST /user-api/submit-prefer           Submit preferences
+POST /user-api/block                   Block user
+POST /user-api/unblock                 Unblock user
+POST /user-api/get-sms-code            Get SMS verification
+POST /user-api/check-sms-code          Verify SMS code
+POST /user-api/check-phone-account     Check phone exists
+POST /user-api/check-mail-account      Check email exists
+POST /user-api/reset-password          Reset password
+
+--- VIP & Monetization ---
+
+GET  /vip/member/detail                VIP details
+POST /vip/member/rights-check          Check rights
+GET  /vip/member/rewards-receive       Receive rewards
+GET  /money/coin-log                   Coin history
+GET  /money/sku-list/get               SKU/pricing list
+POST /money/exchange/order             Exchange coins
+POST /money/gp-trading-order/create    Google Play order
+POST /money/gp-purchase-result/polling GP purchase polling
+POST /money/paynicorn-trading-order/create Paynicorn order
+POST /money/paynicorn-purchase-result/polling Paynicorn polling
+
+--- Activity & Gamification ---
+
+POST /activity/check-in                Daily check-in
+GET  /activity/check-in-info           Check-in info
+GET  /activity/task-list               Task list
+GET  /activity/global-task             Global tasks
+POST /activity/rewards-receive         Receive rewards
+POST /activity/fission/bind            Referral bind
+GET  /activity/fission/reward-list     Referral rewards
+POST /activity/download-task-receive   Download task
+POST /activity/promo-code-bind         Promo code
+GET  /activity/pp-popup                Popup config
+POST /activity/home/popup              Home popup
+
+--- App Config & System ---
+
+GET  /app/config                       App configuration (NO AUTH)
+GET  /app/check-update                 Check update (NO AUTH)
+GET  /app/js-config                    JavaScript config (NO AUTH)
+GET  /tab-operating                    Tab config
+GET  /tab/ranking-list                 Ranking list
+GET  /playlist/content                 Playlist content
+GET  /location/near-address            Nearby address
+GET  /community/trending-entrance      Trending entrance (NO AUTH)
+GET  /ad/config                        Ad configuration
+GET  /upload/sts-token/v2              STS upload token
+
+--- Music & Education ---
+
+POST /music/like                       Like music
+GET  /music/like-list                  Music likes
+GET  /learning/my-course               My courses
+GET  /learning/prefer-options          Preference options
+POST /learning/add-course              Add course
+POST /learning/submit-prefer           Submit preferences
+
+--- OpenSubtitles External API ---
+
+GET  https://vip-api.opensubtitles.com/api/v1/subtitles   Search subtitles
+POST https://vip-api.opensubtitles.com/api/v1/download    Download subtitle file
+
+================================================================================
+ 9. PUBLIC H5 API ENDPOINTS (Website API — NO SIGNING)
+================================================================================
+
+Base URL: https://h5-api.aoneroom.com/wefeed-h5api-bff/
+Auth: NONE — CORS-enabled, public
+
+These endpoints can be called DIRECTLY from the browser (no proxy needed).
+This is what movie-box.co uses.
+
+GET  /home?host=movie-box.co            Homepage data (21 sections, 250+ items)
+GET  /subject/trending?page=0&perPage=18 Trending content
+GET  /tab/get-bottom-tab-list           Bottom tab config
+GET  /subject/everyone-search           Popular search terms
+GET  /app/get-latest-app-pkgs?appName=moviebox  App download links
+
+--- H5 API Response Structure (/home) ---
+
+{
+  "code": 0,
+  "message": "ok",
+  "data": {
+    "platformList": [
+      {"name": "Netflix", "uploadBy": "Regina"},
+      {"name": "PrimeVideo", "uploadBy": "Lakimora"},
+      {"name": "Disney", "uploadBy": "samrawit"},
+      ...
+    ],
+    "operatingList": [
+      {
+        "type": "BANNER",
+        "position": 1,
+        "title": null,
+        "subjects": [...],
+        "banner": {...}
+      },
+      {
+        "type": "SUBJECTS_MOVIE",
+        "position": 2,
+        "title": "Popular Movie",
+        "subjects": [
+          {
+            "subjectId": "7808991045882365944",
+            "subjectType": 1,
+            "title": "Masters of the Universe",
+            "releaseDate": "2026-06-05",
+            "genre": "Action, Adventure, Family",
+            "cover": {
+              "url": "https://pbcdnw.aoneroom.com/image/...",
+              "width": 2000,
+              "height": 3000
+            },
+            "countryName": "United States",
+            "imdbRatingValue": "7.0"
+          },
+          ...
+        ]
+      },
+      ...
+    ]
+  }
+}
+
+--- Section Types in operatingList ---
+
+BANNER          — Hero carousel banner
+SPORT_LIVE      — Live sports
+SUBJECTS_MOVIE  — Movie list
+SUBJECTS_TV     — TV show list
+APPOINTMENT_LIST — Upcoming calendar
+GENRE_TOP       — Genre top list
+
+--- Common Section Titles (21 total) ---
+
+Popular Movie, Popular Series, Upcoming Calendar, Superhero Series,
+Teen Romance, Adult Animation, Bet+, Epic Fantasy, Teen Fantasy,
+Gangster, Sitcom, Action&Thriller, BL Story, K-Drama, C-Drama,
+Anime[English Dubbed], Action Movies, Horror Movies,
+Must-watch Black Shows, 🔥Hot Short TV, 💓Romance 💓
+
+================================================================================
+ 10. REAL STREAMING URLS (Verified Playing)
+================================================================================
+
+The /subject-api/play-info endpoint returns real MP4 stream URLs.
+
+--- Request ---
+
+GET /wefeed-mobile-bff/subject-api/play-info?subjectId=5648604130714208952
+Authorization: Bearer <jwt>
++ signing headers
+
+--- Response ---
+
+{
+  "code": 0,
+  "message": "ok",
+  "data": {
+    "streams": [
+      {
+        "format": "MP4",
+        "id": "5271802327488512480",
+        "url": "https://bcdn4.hakunaymatata.com/bt/d727d2e9...mp4?sign=60d125c7...",
+        "resolutions": "360",
+        "size": "405877032",
+        "duration": 8455,
+        "codecName": "h264",
+        "signCookie": "",
+        "idType": ""
+      },
+      {
+        "format": "MP4",
+        "id": "1926477355862608040",
+        "url": "https://bcdn4.hakunaymatata.com/tran-audio/20250605/89efcae1...mp4?sign=490a69d1...",
+        "resolutions": "480",
+        "size": "588786294",
+        "duration": 8455,
+        "codecName": "h264"
+      },
+      {
+        "format": "MP4",
+        "id": "7527080075230331944",
+        "url": "https://bcdn4.hakunaymatata.com/tran-audio/20250605/f427a935...mp4?sign=e66a2272...",
+        "resolutions": "1080",
+        "size": "...",
+        "duration": 8455,
+        "codecName": "h264"
+      }
+    ],
+    "title": "Maharaja"
+  }
+}
+
+--- Stream URL Format ---
+
+https://bcdn4.hakunaymatata.com/<path>/<hash>.mp4?sign=<signature>&t=<timestamp>
+
+  - sign: HMAC signature (time-limited)
+  - t: Unix timestamp (URL expires after ~24 hours)
+  - Multiple resolutions: 360p, 480p, 720p, 1080p
+  - Format: MP4 (also seen: DASH .mpd with CloudFront signed cookies)
+
+--- Verified Playing Titles ---
+
+Maharaja (1080p, 480p, 360p)
+Immortal Combat (1080p, 480p, 360p)
+BLACK GHETTO 2 (480p, 360p)
+Mumbai Saga (360p)
+omo omi (480p)
+The Only Boy in SS2 (480p)
+THE RETURN (480p, 360p)
+Sakra (480p, 360p)
+Iron Man (verified playing in browser)
+Spider-Man (verified playing in browser)
+Batman (verified playing in browser)
+
+================================================================================
+ 11. IMAGE CDN & OPTIMIZATION
+================================================================================
+
+CDN Domains:
+  pbcdn.aoneroom.com    — Original images
+  pbcdnw.aoneroom.com   — Web-optimized (use this one)
+
+--- Aliyun OSS Image Optimization ---
+
+Append query params to any aoneroom CDN image URL:
+
+?x-oss-process=image/resize,w_<WIDTH>/format,webp
+
+Examples:
+  Original:    https://pbcdnw.aoneroom.com/image/2026/01/27/8a4e2dd1...jpg
+  240px webp:  https://pbcdnw.aoneroom.com/image/2026/01/27/8a4e2dd1...jpg?x-oss-process=image/resize,w_240/format,webp
+  540px webp:  https://pbcdnw.aoneroom.com/image/2026/01/27/8a4e2dd1...jpg?x-oss-process=image/resize,w_540/format,webp
+  1280px webp: https://pbcdnw.aoneroom.com/image/2026/01/27/8a4e2dd1...jpg?x-oss-process=image/resize,w_1280/format,webp
+
+--- Two-Tier Image Loading (Blur Placeholder) ---
+
+MovieBox uses a clever technique:
+  1. Load a tiny 20px-wide blurred version first (~1KB, instant)
+  2. Apply CSS blur filter to make it look like a placeholder
+  3. Load the full image (240px, 540px, or 1280px)
+  4. Fade in the full image on top of the blur
+
+This gives instant visual feedback while the full image loads.
+
+Recommended sizes:
+  - Movie card posters: 240px (cards are 120-170px on screen)
+  - Hero backdrops: 1280px
+  - Blur placeholders: 20px
+
+================================================================================
+ 12. DEVICE FINGERPRINT (Per-Browser)
+================================================================================
+
+Each browser gets a unique device fingerprint, stored in an httpOnly cookie.
+This means each user gets their own visitor JWT and userId from MovieBox.
+
+--- Fingerprint Fields ---
+
+device_id: 16-char hex string (e.g. "a1b2c3d4e5f6g7h8")
+  - Mimics Android's Settings.Secure.ANDROID_ID
+  - Generated with crypto.randomBytes(8).toString("hex")
+
+mac: MAC address format (e.g. "00:11:22:33:44:55")
+  - 6 bytes, hex, colon-separated, uppercase
+  - Generated with crypto.randomBytes(1) × 6
+
+imei: 15-digit number (e.g. "123456789012345")
+  - Standard IMEI format
+  - Generated with crypto.randomInt(0, 10) × 15
+
+--- Cookie Storage ---
+
+Cookie name: zexbox-device
+  - httpOnly: true (can't be read by client JS)
+  - sameSite: lax
+  - maxAge: 1 year
+  - JSON: {"device_id":"...","mac":"...","imei":"..."}
+
+--- Region Cookie ---
+
+Cookie name: zexbox-region
+  - Value: "AUTO" (default) or country code ("NG", "KE", etc.)
+  - httpOnly: false (client can read for UI)
+  - maxAge: 1 year
+
+--- Visitor userId Examples ---
+
+Each browser gets a unique userId:
+  Browser A: device_id=078ac354fb6986ed, userId=8461843928516552456
+  Browser B: device_id=c109d644d124f725, userId=2934519810849394856
+  After reset: device_id=86987c6307a22de1 (new identity issued)
+
+================================================================================
+ 13. ARCHITECTURE & PERFORMANCE
+================================================================================
+
+--- Architecture ---
+
+Browser
+  │
+  ├── Home/Trending → h5-api.aoneroom.com (DIRECT, no proxy)
+  │                    ↓
+  │                  Returns 21 sections, ~250 items
+  │                  Cached in localStorage (5-min TTL)
+  │                  Stale-while-revalidate pattern
+  │
+  ├── Detail/Play/Search → /api/moviebox (our proxy)
+  │                          ↓
+  │                        Signs request with HMAC-MD5
+  │                        Acquires guest JWT (cached 50 min)
+  │                        Forwards to api6.aoneroom.com
+  │                        Returns streams to browser
+  │
+  └── Video playback → bcdn4.hakunaymatata.com (CDN MP4)
+                       ↓
+                     Direct <video> element playback
+
+--- Performance Optimizations ---
+
+1. Direct h5-api calls (no proxy for public endpoints)
+   - Eliminates one network hop
+   - Browser → MovieBox directly (CORS-enabled)
+
+2. localStorage cache (5-min TTL)
+   - Subsequent page loads: instant (0ms network)
+   - Stale-while-revalidate: show cached, refresh in background
+
+3. Server-side memory cache (5-min TTL)
+   - For signed API calls (detail, play, search)
+   - Pre-warmed on server startup
+
+4. Lazy section loading (IntersectionObserver)
+   - Rows only render when scrolled within 200px
+   - Reduces initial DOM nodes and image loads
+
+5. Blur placeholder images
+   - 20px blurred version loads first (~1KB)
+   - Full image fades in on load
+
+6. Trimmed API responses
+   - Removed unused fields (staffList, ops, trace_id, etc.)
+   - Capped sections at 12 items
+   - Truncated descriptions to 300 chars
+   - Payload: 824KB → 110KB (87% reduction)
+
+--- Measured Performance ---
+
+  Home page DOM ready:    106ms (was 3s+)
+  Total page load (cold): 300ms (was 6s)
+  Total page load (cached): 253ms
+  Search response:        7ms (cached) / 1.7s (cold)
+  Stream URL fetch:       500ms
+
+================================================================================
+ 14. HOW TO USE / QUICK START
+================================================================================
+
+--- Prerequisites ---
+
+  Node.js 18+ or Bun
+  npm or bun package manager
+
+--- Installation ---
+
+  unzip zexbox-source.zip
+  cd zexbox-source
+  bun install  (or npm install)
+
+--- Run Dev Server ---
+
+  bun run dev  (or npm run dev)
+  # Opens on http://localhost:3000
+
+--- Build for Production ---
+
+  bun run build
+  bun run start
+
+--- Key Environment Variables (.env) ---
+
+  DATABASE_URL=file:/path/to/db.sqlite
+  # No API keys needed — they're hardcoded in src/lib/moviebox.ts
+
+--- File Structure ---
+
+  src/
+    app/
+      page.tsx              Main UI (Home, Search, Detail, Player, etc.)
+      layout.tsx            Root layout
+      globals.css           Dark theme
+      api/moviebox/route.ts API proxy (signing + JWT)
+    lib/
+      moviebox.ts           Signing algorithm + all endpoints
+      h5api.ts              Direct browser → h5-api client
+      device.ts             Per-browser fingerprint + region
+      image.ts              Image optimization
+      catalog.ts            Static fallback catalog
+      use-moviebox.ts       React hooks (search, detail, play)
+    stores/
+      useStore.ts           Zustand store (coins, history, watchlist)
+    components/
+      zexbox/Player.tsx     HLS.js + iframe video player
+      ui/                   shadcn/ui components
+
+--- Using the API Directly ---
+
+// 1. Acquire guest JWT
+const jwt = await getGuestJwt();
+
+// 2. Fetch trending movies
+const trending = await signedRequest({
+  method: "POST",
+  path: "/wefeed-mobile-bff/subject-api/trending/v2",
+  body: { category: "movie", page: 1, size: 20 }
+});
+
+// 3. Search
+const results = await signedRequest({
+  method: "POST",
+  path: "/wefeed-mobile-bff/subject-api/search/v2",
+  body: { keyword: "avengers", page: 1, size: 20 }
+});
+
+// 4. Get stream URLs
+const playInfo = await signedRequest({
+  path: "/wefeed-mobile-bff/subject-api/play-info",
+  query: { subjectId: "5648604130714208952" }
+});
+// playInfo.data.streams[] contains MP4 URLs
+
+================================================================================
+ 15. LEGAL & ETHICAL NOTES
+================================================================================
+
+This documentation is for educational and research purposes only.
+
+- The MovieBox API is the property of Transsion Holdings / MovieBox.
+- Reverse engineering was performed on a publicly available APK for
+  interoperability research.
+- The signing algorithm and secrets are extracted from the APK's
+  AndroidManifest.xml and smali bytecode.
+- Streaming URLs are time-limited (signed URLs expire after ~24 hours).
+- This information should not be used to bypass payment, redistribute
+  content, or violate MovieBox's terms of service.
+- Users accessing MovieBox content do so at their own risk and are
+  responsible for complying with their local laws.
+
+The Zex Box app built using this information is a demonstration of:
+- API reverse engineering techniques
+- HMAC-MD5 signing implementation
+- Guest authentication flows
+- Per-browser device fingerprinting
+- Direct CDN integration
+- Performance optimization patterns
+
+================================================================================
+ END OF DOCUMENT
+================================================================================
+
+Total endpoints documented: 70+ (Mobile API) + 5 (H5 API)
+Total domains mapped: 40+
+Total secrets extracted: 10+
+Verified streaming: 10+ titles confirmed playing in browser
+
+For questions about the implementation, refer to the source code in zexbox-source.zip
+or contact the developer.
+
+Generated by Zex Box Project — 2026-06-27
+================================================================================
