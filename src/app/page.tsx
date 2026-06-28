@@ -113,6 +113,9 @@ export default function Page() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  // Ref to break circular dependency (playTitle references itself for TV navigation)
+  const playTitleRef = useRef<(item: DisplayItem, episode?: string) => Promise<void>>(async () => {});
+
   const playTitle = useCallback(async (item: DisplayItem, episode?: string) => {
     if (item.source === "moviebox") {
       // Parse episode info if provided (e.g. "S1E3")
@@ -166,10 +169,10 @@ export default function Page() {
                   playerState.currentEpisode = ep || 1;
                   playerState.maxEpisodes = maxEp;
                   playerState.onSeasonChange = (newSe: number) => {
-                    playTitle(item, `S${newSe}E1`);
+                    playTitleRef.current(item, `S${newSe}E1`);
                   };
                   playerState.onEpisodeChange = (newEp: number) => {
-                    playTitle(item, `S${currentSe}E${newEp}`);
+                    playTitleRef.current(item, `S${currentSe}E${newEp}`);
                   };
                 }
               } catch { /* navigation optional */ }
@@ -206,6 +209,9 @@ export default function Page() {
       progress: 0, episode,
     });
   }, []);
+
+  // Keep ref in sync so TV navigation callbacks can call the latest playTitle
+  playTitleRef.current = playTitle;
 
   return (
     <div className="min-h-screen flex flex-col bg-[#0d0d0f] text-white" style={{ fontFamily: '"Segoe UI", "SF Pro Display", "PingFang SC", "Helvetica Neue", Arial, sans-serif' }}>
