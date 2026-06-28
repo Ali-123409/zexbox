@@ -33,3 +33,7 @@ zexbox-*.txt
 # Misc
 *.pem
 *.key
+
+# Cloudflare build output
+.open-next/
+wrangler.toml.bak
