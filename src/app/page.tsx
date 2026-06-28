@@ -211,7 +211,9 @@ export default function Page() {
   }, []);
 
   // Keep ref in sync so TV navigation callbacks can call the latest playTitle
-  playTitleRef.current = playTitle;
+  useEffect(() => {
+    playTitleRef.current = playTitle;
+  }, [playTitle]);
 
   return (
     <div className="min-h-screen flex flex-col bg-[#0d0d0f] text-white" style={{ fontFamily: '"Segoe UI", "SF Pro Display", "PingFang SC", "Helvetica Neue", Arial, sans-serif' }}>
