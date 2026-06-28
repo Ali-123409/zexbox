@@ -456,7 +456,7 @@ export async function getSearchSuggestions(keyword: string) {
 }
 
 // Full search (REQUIRES guest JWT)
-export async function searchAll(keyword: string, page = 1, size = 20) {
+export async function searchAll(keyword: string, page = 0, size = 20) {
   return signedRequest({
     method: "POST",
     path: `${BASE_PATH}/subject-api/search/v2`,
