@@ -36,3 +36,11 @@ zexbox-*.txt
 *.pem
 *.key
 wrangler.toml.bak
+
+# Android/Capacitor (APK build artifacts)
+android/
+dist/
+*.apk
+
+# Tool results
+tool-results/
