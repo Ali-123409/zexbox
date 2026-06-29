@@ -1,4 +1,4 @@
-name = "zexbox"
+name = "zexbox1"
 compatibility_date = "2025-06-01"
 compatibility_flags = ["nodejs_compat"]
 main = ".open-next/worker.js"
