@@ -1,2 +1,38 @@
-skills/
+# Dependencies
 node_modules/
+
+# Build output
+.next/
+out/
+build/
+.vercel/
+.open-next/
+
+# Environment
+.env
+.env.local
+.env*.local
+
+# Logs
+dev.log
+*.log
+
+# OS
+.DS_Store
+
+# Project-specific
+db/
+skills/
+download/
+upload/
+zexbox-*.zip
+zexbox-*.txt
+
+# IDE
+.vscode/
+.idea/
+
+# Misc
+*.pem
+*.key
+wrangler.toml.bak
