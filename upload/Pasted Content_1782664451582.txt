@@ -1,0 +1,627 @@
+2026-06-28T16:00:56.248Z	Initializing build environment...
+2026-06-28T16:01:00.092Z	Success: Finished initializing build environment
+2026-06-28T16:01:00.799Z	Cloning repository...
+2026-06-28T16:01:02.182Z	Restoring from dependencies cache
+2026-06-28T16:01:02.189Z	Restoring from build output cache
+2026-06-28T16:01:02.980Z	Detected the following tools from environment: nodejs@22.23.1, bun@1.2.15
+2026-06-28T16:01:02.980Z	Installing nodejs 22.23.1
+2026-06-28T16:01:07.484Z	Installing project dependencies: bun install --frozen-lockfile
+2026-06-28T16:01:07.701Z	[0.06ms] ".env"
+2026-06-28T16:01:07.703Z	bun install v1.2.15 (df017990)
+2026-06-28T16:01:31.235Z	
+2026-06-28T16:01:31.236Z	+ @opennextjs/cloudflare@1.20.1
+2026-06-28T16:01:31.237Z	+ @tailwindcss/postcss@4.1.18
+2026-06-28T16:01:31.237Z	+ @types/react@19.2.8
+2026-06-28T16:01:31.237Z	+ @types/react-dom@19.2.3
+2026-06-28T16:01:31.237Z	+ bun-types@1.3.6
+2026-06-28T16:01:31.237Z	+ eslint@9.39.2
+2026-06-28T16:01:31.238Z	+ eslint-config-next@16.1.3
+2026-06-28T16:01:31.239Z	+ tailwindcss@4.1.18
+2026-06-28T16:01:31.240Z	+ tw-animate-css@1.4.0
+2026-06-28T16:01:31.240Z	+ typescript@5.9.3
+2026-06-28T16:01:31.240Z	+ wrangler@4.105.0
+2026-06-28T16:01:31.240Z	+ @dnd-kit/core@6.3.1
+2026-06-28T16:01:31.240Z	+ @dnd-kit/sortable@10.0.0
+2026-06-28T16:01:31.240Z	+ @dnd-kit/utilities@3.2.2
+2026-06-28T16:01:31.241Z	+ @hookform/resolvers@5.2.2
+2026-06-28T16:01:31.241Z	+ @mdxeditor/editor@3.52.3
+2026-06-28T16:01:31.241Z	+ @prisma/client@6.19.2
+2026-06-28T16:01:31.241Z	+ @radix-ui/react-accordion@1.2.12
+2026-06-28T16:01:31.241Z	+ @radix-ui/react-alert-dialog@1.1.15
+2026-06-28T16:01:31.242Z	+ @radix-ui/react-aspect-ratio@1.1.8
+2026-06-28T16:01:31.243Z	+ @radix-ui/react-avatar@1.1.11
+2026-06-28T16:01:31.243Z	+ @radix-ui/react-checkbox@1.3.3
+2026-06-28T16:01:31.244Z	+ @radix-ui/react-collapsible@1.1.12
+2026-06-28T16:01:31.244Z	+ @radix-ui/react-context-menu@2.2.16
+2026-06-28T16:01:31.244Z	+ @radix-ui/react-dialog@1.1.15
+2026-06-28T16:01:31.247Z	+ @radix-ui/react-dropdown-menu@2.1.16
+2026-06-28T16:01:31.248Z	+ @radix-ui/react-hover-card@1.1.15
+2026-06-28T16:01:31.248Z	+ @radix-ui/react-label@2.1.8
+2026-06-28T16:01:31.248Z	+ @radix-ui/react-menubar@1.1.16
+2026-06-28T16:01:31.248Z	+ @radix-ui/react-navigation-menu@1.2.14
+2026-06-28T16:01:31.248Z	+ @radix-ui/react-popover@1.1.15
+2026-06-28T16:01:31.248Z	+ @radix-ui/react-progress@1.1.8
+2026-06-28T16:01:31.248Z	+ @radix-ui/react-radio-group@1.3.8
+2026-06-28T16:01:31.248Z	+ @radix-ui/react-scroll-area@1.2.10
+2026-06-28T16:01:31.248Z	+ @radix-ui/react-select@2.2.6
+2026-06-28T16:01:31.249Z	+ @radix-ui/react-separator@1.1.8
+2026-06-28T16:01:31.249Z	+ @radix-ui/react-slider@1.3.6
+2026-06-28T16:01:31.249Z	+ @radix-ui/react-slot@1.2.4
+2026-06-28T16:01:31.249Z	+ @radix-ui/react-switch@1.2.6
+2026-06-28T16:01:31.249Z	+ @radix-ui/react-tabs@1.1.13
+2026-06-28T16:01:31.249Z	+ @radix-ui/react-toast@1.2.15
+2026-06-28T16:01:31.250Z	+ @radix-ui/react-toggle@1.1.10
+2026-06-28T16:01:31.250Z	+ @radix-ui/react-toggle-group@1.1.11
+2026-06-28T16:01:31.250Z	+ @radix-ui/react-tooltip@1.2.8
+2026-06-28T16:01:31.250Z	+ @reactuses/core@6.1.9
+2026-06-28T16:01:31.250Z	+ @tanstack/react-query@5.90.19
+2026-06-28T16:01:31.250Z	+ @tanstack/react-table@8.21.3
+2026-06-28T16:01:31.250Z	+ class-variance-authority@0.7.1
+2026-06-28T16:01:31.251Z	+ clsx@2.1.1
+2026-06-28T16:01:31.251Z	+ cmdk@1.1.1
+2026-06-28T16:01:31.251Z	+ date-fns@4.1.0
+2026-06-28T16:01:31.251Z	+ embla-carousel-react@8.6.0
+2026-06-28T16:01:31.251Z	+ framer-motion@12.26.2
+2026-06-28T16:01:31.251Z	+ hls.js@1.6.16
+2026-06-28T16:01:31.251Z	+ input-otp@1.4.2
+2026-06-28T16:01:31.251Z	+ lucide-react@0.525.0
+2026-06-28T16:01:31.251Z	+ next@16.1.3
+2026-06-28T16:01:31.252Z	+ next-auth@4.24.13
+2026-06-28T16:01:31.252Z	+ next-intl@4.7.0
+2026-06-28T16:01:31.252Z	+ next-themes@0.4.6
+2026-06-28T16:01:31.252Z	+ prisma@6.19.2
+2026-06-28T16:01:31.252Z	+ react@19.2.3
+2026-06-28T16:01:31.252Z	+ react-day-picker@9.13.0
+2026-06-28T16:01:31.252Z	+ react-dom@19.2.3
+2026-06-28T16:01:31.252Z	+ react-hook-form@7.71.1
+2026-06-28T16:01:31.252Z	+ react-markdown@10.1.0
+2026-06-28T16:01:31.252Z	+ react-resizable-panels@3.0.6
+2026-06-28T16:01:31.252Z	+ react-syntax-highlighter@15.6.6
+2026-06-28T16:01:31.252Z	+ recharts@2.15.4
+2026-06-28T16:01:31.252Z	+ sharp@0.34.5
+2026-06-28T16:01:31.252Z	+ sonner@2.0.7
+2026-06-28T16:01:31.253Z	+ tailwind-merge@3.4.0
+2026-06-28T16:01:31.253Z	+ tailwindcss-animate@1.0.7
+2026-06-28T16:01:31.253Z	+ uuid@11.1.0
+2026-06-28T16:01:31.253Z	+ vaul@1.1.2
+2026-06-28T16:01:31.253Z	+ z-ai-web-dev-sdk@0.0.18
+2026-06-28T16:01:31.253Z	+ zod@4.3.5
+2026-06-28T16:01:31.253Z	+ zustand@5.0.10
+2026-06-28T16:01:31.253Z	
+2026-06-28T16:01:31.253Z	1093 packages installed [23.57s]
+2026-06-28T16:01:31.449Z	Executing user build command: bun run build
+2026-06-28T16:01:31.552Z	$ bun x opennextjs-cloudflare build
+2026-06-28T16:01:33.543Z	
+2026-06-28T16:01:33.543Z	┌─────────────────────────────┐
+2026-06-28T16:01:33.543Z	│ OpenNext — Cloudflare build │
+2026-06-28T16:01:33.543Z	└─────────────────────────────┘
+2026-06-28T16:01:33.543Z	
+2026-06-28T16:01:33.642Z	WARN The direct mode queue is not recommended for use in production.
+2026-06-28T16:01:33.653Z	App directory: /opt/buildhome/repo
+2026-06-28T16:01:33.653Z	Next.js version : 16.1.3
+2026-06-28T16:01:33.654Z	@opennextjs/cloudflare version: 1.20.1
+2026-06-28T16:01:33.655Z	@opennextjs/aws version: 4.0.2
+2026-06-28T16:01:33.655Z	WARN workerd compatibility_date: 2025-05-01, consider updating your wrangler config to a more recent date to benefit from the latest features and fixes.
+2026-06-28T16:01:33.657Z	
+2026-06-28T16:01:33.657Z	┌─────────────────────────────────┐
+2026-06-28T16:01:33.657Z	│ OpenNext — Building Next.js app │
+2026-06-28T16:01:33.657Z	└─────────────────────────────────┘
+2026-06-28T16:01:33.657Z	
+2026-06-28T16:01:33.667Z	$ bun x opennextjs-cloudflare build
+2026-06-28T16:01:35.662Z	
+2026-06-28T16:01:35.663Z	┌─────────────────────────────┐
+2026-06-28T16:01:35.664Z	│ OpenNext — Cloudflare build │
+2026-06-28T16:01:35.664Z	└─────────────────────────────┘
+2026-06-28T16:01:35.664Z	
+2026-06-28T16:01:35.751Z	WARN The direct mode queue is not recommended for use in production.
+2026-06-28T16:01:35.762Z	App directory: /opt/buildhome/repo
+2026-06-28T16:01:35.762Z	Next.js version : 16.1.3
+2026-06-28T16:01:35.764Z	@opennextjs/cloudflare version: 1.20.1
+2026-06-28T16:01:35.764Z	@opennextjs/aws version: 4.0.2
+2026-06-28T16:01:35.764Z	WARN workerd compatibility_date: 2025-05-01, consider updating your wrangler config to a more recent date to benefit from the latest features and fixes.
+2026-06-28T16:01:35.765Z	
+2026-06-28T16:01:35.765Z	┌─────────────────────────────────┐
+2026-06-28T16:01:35.765Z	│ OpenNext — Building Next.js app │
+2026-06-28T16:01:35.766Z	└─────────────────────────────────┘
+2026-06-28T16:01:35.766Z	
+2026-06-28T16:01:35.776Z	$ bun x opennextjs-cloudflare build
+2026-06-28T16:01:37.466Z	
+2026-06-28T16:01:37.467Z	┌─────────────────────────────┐
+2026-06-28T16:01:37.467Z	│ OpenNext — Cloudflare build │
+2026-06-28T16:01:37.467Z	└─────────────────────────────┘
+2026-06-28T16:01:37.467Z	
+2026-06-28T16:01:37.552Z	WARN The direct mode queue is not recommended for use in production.
+2026-06-28T16:01:37.559Z	App directory: /opt/buildhome/repo
+2026-06-28T16:01:37.559Z	Next.js version : 16.1.3
+2026-06-28T16:01:37.560Z	@opennextjs/cloudflare version: 1.20.1
+2026-06-28T16:01:37.560Z	@opennextjs/aws version: 4.0.2
+2026-06-28T16:01:37.560Z	WARN workerd compatibility_date: 2025-05-01, consider updating your wrangler config to a more recent date to benefit from the latest features and fixes.
+2026-06-28T16:01:37.562Z	
+2026-06-28T16:01:37.562Z	┌─────────────────────────────────┐
+2026-06-28T16:01:37.562Z	│ OpenNext — Building Next.js app │
+2026-06-28T16:01:37.562Z	└─────────────────────────────────┘
+2026-06-28T16:01:37.562Z	
+2026-06-28T16:01:37.570Z	$ bun x opennextjs-cloudflare build
+2026-06-28T16:01:39.089Z	
+2026-06-28T16:01:39.090Z	┌─────────────────────────────┐
+2026-06-28T16:01:39.090Z	│ OpenNext — Cloudflare build │
+2026-06-28T16:01:39.090Z	└─────────────────────────────┘
+2026-06-28T16:01:39.090Z	
+2026-06-28T16:01:39.190Z	WARN The direct mode queue is not recommended for use in production.
+2026-06-28T16:01:39.199Z	App directory: /opt/buildhome/repo
+2026-06-28T16:01:39.199Z	Next.js version : 16.1.3
+2026-06-28T16:01:39.200Z	@opennextjs/cloudflare version: 1.20.1
+2026-06-28T16:01:39.200Z	@opennextjs/aws version: 4.0.2
+2026-06-28T16:01:39.201Z	WARN workerd compatibility_date: 2025-05-01, consider updating your wrangler config to a more recent date to benefit from the latest features and fixes.
+2026-06-28T16:01:39.202Z	
+2026-06-28T16:01:39.202Z	┌─────────────────────────────────┐
+2026-06-28T16:01:39.202Z	│ OpenNext — Building Next.js app │
+2026-06-28T16:01:39.203Z	└─────────────────────────────────┘
+2026-06-28T16:01:39.203Z	
+2026-06-28T16:01:39.214Z	$ bun x opennextjs-cloudflare build
+2026-06-28T16:01:41.187Z	
+2026-06-28T16:01:41.187Z	┌─────────────────────────────┐
+2026-06-28T16:01:41.188Z	│ OpenNext — Cloudflare build │
+2026-06-28T16:01:41.188Z	└─────────────────────────────┘
+2026-06-28T16:01:41.188Z	
+2026-06-28T16:01:41.280Z	WARN The direct mode queue is not recommended for use in production.
+2026-06-28T16:01:41.290Z	App directory: /opt/buildhome/repo
+2026-06-28T16:01:41.290Z	Next.js version : 16.1.3
+2026-06-28T16:01:41.291Z	@opennextjs/cloudflare version: 1.20.1
+2026-06-28T16:01:41.291Z	@opennextjs/aws version: 4.0.2
+2026-06-28T16:01:41.291Z	WARN workerd compatibility_date: 2025-05-01, consider updating your wrangler config to a more recent date to benefit from the latest features and fixes.
+2026-06-28T16:01:41.293Z	
+2026-06-28T16:01:41.293Z	┌─────────────────────────────────┐
+2026-06-28T16:01:41.293Z	│ OpenNext — Building Next.js app │
+2026-06-28T16:01:41.293Z	└─────────────────────────────────┘
+2026-06-28T16:01:41.293Z	
+2026-06-28T16:01:41.306Z	$ bun x opennextjs-cloudflare build
+2026-06-28T16:01:43.256Z	
+2026-06-28T16:01:43.257Z	┌─────────────────────────────┐
+2026-06-28T16:01:43.257Z	│ OpenNext — Cloudflare build │
+2026-06-28T16:01:43.257Z	└─────────────────────────────┘
+2026-06-28T16:01:43.257Z	
+2026-06-28T16:01:43.344Z	WARN The direct mode queue is not recommended for use in production.
+2026-06-28T16:01:43.354Z	App directory: /opt/buildhome/repo
+2026-06-28T16:01:43.354Z	Next.js version : 16.1.3
+2026-06-28T16:01:43.355Z	@opennextjs/cloudflare version: 1.20.1
+2026-06-28T16:01:43.355Z	@opennextjs/aws version: 4.0.2
+2026-06-28T16:01:43.355Z	WARN workerd compatibility_date: 2025-05-01, consider updating your wrangler config to a more recent date to benefit from the latest features and fixes.
+2026-06-28T16:01:43.357Z	
+2026-06-28T16:01:43.357Z	┌─────────────────────────────────┐
+2026-06-28T16:01:43.357Z	│ OpenNext — Building Next.js app │
+2026-06-28T16:01:43.357Z	└─────────────────────────────────┘
+2026-06-28T16:01:43.357Z	
+2026-06-28T16:01:43.368Z	$ bun x opennextjs-cloudflare build
+2026-06-28T16:01:45.135Z	
+2026-06-28T16:01:45.135Z	┌─────────────────────────────┐
+2026-06-28T16:01:45.135Z	│ OpenNext — Cloudflare build │
+2026-06-28T16:01:45.135Z	└─────────────────────────────┘
+2026-06-28T16:01:45.135Z	
+2026-06-28T16:01:45.236Z	WARN The direct mode queue is not recommended for use in production.
+2026-06-28T16:01:45.241Z	App directory: /opt/buildhome/repo
+2026-06-28T16:01:45.242Z	Next.js version : 16.1.3
+2026-06-28T16:01:45.243Z	@opennextjs/cloudflare version: 1.20.1
+2026-06-28T16:01:45.243Z	@opennextjs/aws version: 4.0.2
+2026-06-28T16:01:45.244Z	WARN workerd compatibility_date: 2025-05-01, consider updating your wrangler config to a more recent date to benefit from the latest features and fixes.
+2026-06-28T16:01:45.246Z	
+2026-06-28T16:01:45.246Z	┌─────────────────────────────────┐
+2026-06-28T16:01:45.246Z	│ OpenNext — Building Next.js app │
+2026-06-28T16:01:45.246Z	└─────────────────────────────────┘
+2026-06-28T16:01:45.246Z	
+2026-06-28T16:01:45.257Z	$ bun x opennextjs-cloudflare build
+2026-06-28T16:01:47.352Z	
+2026-06-28T16:01:47.352Z	┌─────────────────────────────┐
+2026-06-28T16:01:47.352Z	│ OpenNext — Cloudflare build │
+2026-06-28T16:01:47.352Z	└─────────────────────────────┘
+2026-06-28T16:01:47.352Z	
+2026-06-28T16:01:47.457Z	WARN The direct mode queue is not recommended for use in production.
+2026-06-28T16:01:47.467Z	App directory: /opt/buildhome/repo
+2026-06-28T16:01:47.467Z	Next.js version : 16.1.3
+2026-06-28T16:01:47.468Z	@opennextjs/cloudflare version: 1.20.1
+2026-06-28T16:01:47.468Z	@opennextjs/aws version: 4.0.2
+2026-06-28T16:01:47.468Z	WARN workerd compatibility_date: 2025-05-01, consider updating your wrangler config to a more recent date to benefit from the latest features and fixes.
+2026-06-28T16:01:47.470Z	
+2026-06-28T16:01:47.470Z	┌─────────────────────────────────┐
+2026-06-28T16:01:47.470Z	│ OpenNext — Building Next.js app │
+2026-06-28T16:01:47.471Z	└─────────────────────────────────┘
+2026-06-28T16:01:47.471Z	
+2026-06-28T16:01:47.484Z	$ bun x opennextjs-cloudflare build
+2026-06-28T16:01:49.293Z	
+2026-06-28T16:01:49.293Z	┌─────────────────────────────┐
+2026-06-28T16:01:49.293Z	│ OpenNext — Cloudflare build │
+2026-06-28T16:01:49.293Z	└─────────────────────────────┘
+2026-06-28T16:01:49.293Z	
+2026-06-28T16:01:49.391Z	WARN The direct mode queue is not recommended for use in production.
+2026-06-28T16:01:49.400Z	App directory: /opt/buildhome/repo
+2026-06-28T16:01:49.400Z	Next.js version : 16.1.3
+2026-06-28T16:01:49.402Z	@opennextjs/cloudflare version: 1.20.1
+2026-06-28T16:01:49.402Z	@opennextjs/aws version: 4.0.2
+2026-06-28T16:01:49.402Z	WARN workerd compatibility_date: 2025-05-01, consider updating your wrangler config to a more recent date to benefit from the latest features and fixes.
+2026-06-28T16:01:49.403Z	
+2026-06-28T16:01:49.404Z	┌─────────────────────────────────┐
+2026-06-28T16:01:49.404Z	│ OpenNext — Building Next.js app │
+2026-06-28T16:01:49.404Z	└─────────────────────────────────┘
+2026-06-28T16:01:49.404Z	
+2026-06-28T16:01:49.416Z	$ bun x opennextjs-cloudflare build
+2026-06-28T16:01:51.107Z	
+2026-06-28T16:01:51.107Z	┌─────────────────────────────┐
+2026-06-28T16:01:51.107Z	│ OpenNext — Cloudflare build │
+2026-06-28T16:01:51.107Z	└─────────────────────────────┘
+2026-06-28T16:01:51.107Z	
+2026-06-28T16:01:51.220Z	WARN The direct mode queue is not recommended for use in production.
+2026-06-28T16:01:51.229Z	App directory: /opt/buildhome/repo
+2026-06-28T16:01:51.230Z	Next.js version : 16.1.3
+2026-06-28T16:01:51.230Z	@opennextjs/cloudflare version: 1.20.1
+2026-06-28T16:01:51.231Z	@opennextjs/aws version: 4.0.2
+2026-06-28T16:01:51.231Z	WARN workerd compatibility_date: 2025-05-01, consider updating your wrangler config to a more recent date to benefit from the latest features and fixes.
+2026-06-28T16:01:51.233Z	
+2026-06-28T16:01:51.233Z	┌─────────────────────────────────┐
+2026-06-28T16:01:51.233Z	│ OpenNext — Building Next.js app │
+2026-06-28T16:01:51.233Z	└─────────────────────────────────┘
+2026-06-28T16:01:51.233Z	
+2026-06-28T16:01:51.244Z	$ bun x opennextjs-cloudflare build
+2026-06-28T16:01:52.968Z	
+2026-06-28T16:01:52.968Z	┌─────────────────────────────┐
+2026-06-28T16:01:52.968Z	│ OpenNext — Cloudflare build │
+2026-06-28T16:01:52.968Z	└─────────────────────────────┘
+2026-06-28T16:01:52.968Z	
+2026-06-28T16:01:53.076Z	WARN The direct mode queue is not recommended for use in production.
+2026-06-28T16:01:53.086Z	App directory: /opt/buildhome/repo
+2026-06-28T16:01:53.086Z	Next.js version : 16.1.3
+2026-06-28T16:01:53.088Z	@opennextjs/cloudflare version: 1.20.1
+2026-06-28T16:01:53.088Z	@opennextjs/aws version: 4.0.2
+2026-06-28T16:01:53.088Z	WARN workerd compatibility_date: 2025-05-01, consider updating your wrangler config to a more recent date to benefit from the latest features and fixes.
+2026-06-28T16:01:53.090Z	
+2026-06-28T16:01:53.090Z	┌─────────────────────────────────┐
+2026-06-28T16:01:53.090Z	│ OpenNext — Building Next.js app │
+2026-06-28T16:01:53.090Z	└─────────────────────────────────┘
+2026-06-28T16:01:53.090Z	
+2026-06-28T16:01:53.103Z	$ bun x opennextjs-cloudflare build
+2026-06-28T16:01:56.760Z	
+2026-06-28T16:01:56.760Z	┌─────────────────────────────┐
+2026-06-28T16:01:56.760Z	│ OpenNext — Cloudflare build │
+2026-06-28T16:01:56.760Z	└─────────────────────────────┘
+2026-06-28T16:01:56.760Z	
+2026-06-28T16:01:56.861Z	WARN The direct mode queue is not recommended for use in production.
+2026-06-28T16:01:56.872Z	App directory: /opt/buildhome/repo
+2026-06-28T16:01:56.873Z	Next.js version : 16.1.3
+2026-06-28T16:01:56.874Z	@opennextjs/cloudflare version: 1.20.1
+2026-06-28T16:01:56.874Z	@opennextjs/aws version: 4.0.2
+2026-06-28T16:01:56.874Z	WARN workerd compatibility_date: 2025-05-01, consider updating your wrangler config to a more recent date to benefit from the latest features and fixes.
+2026-06-28T16:01:56.876Z	
+2026-06-28T16:01:56.877Z	┌─────────────────────────────────┐
+2026-06-28T16:01:56.877Z	│ OpenNext — Building Next.js app │
+2026-06-28T16:01:56.877Z	└─────────────────────────────────┘
+2026-06-28T16:01:56.877Z	
+2026-06-28T16:01:56.889Z	$ bun x opennextjs-cloudflare build
+2026-06-28T16:01:58.848Z	
+2026-06-28T16:01:58.848Z	┌─────────────────────────────┐
+2026-06-28T16:01:58.848Z	│ OpenNext — Cloudflare build │
+2026-06-28T16:01:58.848Z	└─────────────────────────────┘
+2026-06-28T16:01:58.848Z	
+2026-06-28T16:01:58.956Z	WARN The direct mode queue is not recommended for use in production.
+2026-06-28T16:01:58.966Z	App directory: /opt/buildhome/repo
+2026-06-28T16:01:58.966Z	Next.js version : 16.1.3
+2026-06-28T16:01:58.967Z	@opennextjs/cloudflare version: 1.20.1
+2026-06-28T16:01:58.967Z	@opennextjs/aws version: 4.0.2
+2026-06-28T16:01:58.968Z	WARN workerd compatibility_date: 2025-05-01, consider updating your wrangler config to a more recent date to benefit from the latest features and fixes.
+2026-06-28T16:01:58.970Z	
+2026-06-28T16:01:58.970Z	┌─────────────────────────────────┐
+2026-06-28T16:01:58.970Z	│ OpenNext — Building Next.js app │
+2026-06-28T16:01:58.970Z	└─────────────────────────────────┘
+2026-06-28T16:01:58.970Z	
+2026-06-28T16:01:58.982Z	$ bun x opennextjs-cloudflare build
+2026-06-28T16:02:00.997Z	
+2026-06-28T16:02:00.998Z	┌─────────────────────────────┐
+2026-06-28T16:02:00.998Z	│ OpenNext — Cloudflare build │
+2026-06-28T16:02:00.998Z	└─────────────────────────────┘
+2026-06-28T16:02:00.998Z	
+2026-06-28T16:02:01.106Z	WARN The direct mode queue is not recommended for use in production.
+2026-06-28T16:02:01.121Z	App directory: /opt/buildhome/repo
+2026-06-28T16:02:01.122Z	Next.js version : 16.1.3
+2026-06-28T16:02:01.125Z	@opennextjs/cloudflare version: 1.20.1
+2026-06-28T16:02:01.125Z	@opennextjs/aws version: 4.0.2
+2026-06-28T16:02:01.126Z	WARN workerd compatibility_date: 2025-05-01, consider updating your wrangler config to a more recent date to benefit from the latest features and fixes.
+2026-06-28T16:02:01.127Z	
+2026-06-28T16:02:01.130Z	┌─────────────────────────────────┐
+2026-06-28T16:02:01.130Z	│ OpenNext — Building Next.js app │
+2026-06-28T16:02:01.130Z	└─────────────────────────────────┘
+2026-06-28T16:02:01.130Z	
+2026-06-28T16:02:01.142Z	$ bun x opennextjs-cloudflare build
+2026-06-28T16:02:03.680Z	
+2026-06-28T16:02:03.681Z	┌─────────────────────────────┐
+2026-06-28T16:02:03.681Z	│ OpenNext — Cloudflare build │
+2026-06-28T16:02:03.681Z	└─────────────────────────────┘
+2026-06-28T16:02:03.681Z	
+2026-06-28T16:02:03.780Z	WARN The direct mode queue is not recommended for use in production.
+2026-06-28T16:02:03.790Z	App directory: /opt/buildhome/repo
+2026-06-28T16:02:03.791Z	Next.js version : 16.1.3
+2026-06-28T16:02:03.792Z	@opennextjs/cloudflare version: 1.20.1
+2026-06-28T16:02:03.792Z	@opennextjs/aws version: 4.0.2
+2026-06-28T16:02:03.792Z	WARN workerd compatibility_date: 2025-05-01, consider updating your wrangler config to a more recent date to benefit from the latest features and fixes.
+2026-06-28T16:02:03.794Z	
+2026-06-28T16:02:03.794Z	┌─────────────────────────────────┐
+2026-06-28T16:02:03.794Z	│ OpenNext — Building Next.js app │
+2026-06-28T16:02:03.794Z	└─────────────────────────────────┘
+2026-06-28T16:02:03.794Z	
+2026-06-28T16:02:03.808Z	$ bun x opennextjs-cloudflare build
+2026-06-28T16:02:05.801Z	
+2026-06-28T16:02:05.801Z	┌─────────────────────────────┐
+2026-06-28T16:02:05.801Z	│ OpenNext — Cloudflare build │
+2026-06-28T16:02:05.801Z	└─────────────────────────────┘
+2026-06-28T16:02:05.801Z	
+2026-06-28T16:02:05.907Z	WARN The direct mode queue is not recommended for use in production.
+2026-06-28T16:02:05.916Z	App directory: /opt/buildhome/repo
+2026-06-28T16:02:05.916Z	Next.js version : 16.1.3
+2026-06-28T16:02:05.917Z	@opennextjs/cloudflare version: 1.20.1
+2026-06-28T16:02:05.917Z	@opennextjs/aws version: 4.0.2
+2026-06-28T16:02:05.917Z	WARN workerd compatibility_date: 2025-05-01, consider updating your wrangler config to a more recent date to benefit from the latest features and fixes.
+2026-06-28T16:02:05.919Z	
+2026-06-28T16:02:05.919Z	┌─────────────────────────────────┐
+2026-06-28T16:02:05.919Z	│ OpenNext — Building Next.js app │
+2026-06-28T16:02:05.919Z	└─────────────────────────────────┘
+2026-06-28T16:02:05.919Z	
+2026-06-28T16:02:05.930Z	$ bun x opennextjs-cloudflare build
+2026-06-28T16:02:07.966Z	
+2026-06-28T16:02:07.966Z	┌─────────────────────────────┐
+2026-06-28T16:02:07.966Z	│ OpenNext — Cloudflare build │
+2026-06-28T16:02:07.966Z	└─────────────────────────────┘
+2026-06-28T16:02:07.966Z	
+2026-06-28T16:02:08.068Z	WARN The direct mode queue is not recommended for use in production.
+2026-06-28T16:02:08.079Z	App directory: /opt/buildhome/repo
+2026-06-28T16:02:08.079Z	Next.js version : 16.1.3
+2026-06-28T16:02:08.081Z	@opennextjs/cloudflare version: 1.20.1
+2026-06-28T16:02:08.081Z	@opennextjs/aws version: 4.0.2
+2026-06-28T16:02:08.081Z	WARN workerd compatibility_date: 2025-05-01, consider updating your wrangler config to a more recent date to benefit from the latest features and fixes.
+2026-06-28T16:02:08.083Z	
+2026-06-28T16:02:08.083Z	┌─────────────────────────────────┐
+2026-06-28T16:02:08.083Z	│ OpenNext — Building Next.js app │
+2026-06-28T16:02:08.083Z	└─────────────────────────────────┘
+2026-06-28T16:02:08.083Z	
+2026-06-28T16:02:08.096Z	$ bun x opennextjs-cloudflare build
+2026-06-28T16:02:10.179Z	
+2026-06-28T16:02:10.179Z	┌─────────────────────────────┐
+2026-06-28T16:02:10.179Z	│ OpenNext — Cloudflare build │
+2026-06-28T16:02:10.179Z	└─────────────────────────────┘
+2026-06-28T16:02:10.179Z	
+2026-06-28T16:02:10.292Z	WARN The direct mode queue is not recommended for use in production.
+2026-06-28T16:02:10.308Z	App directory: /opt/buildhome/repo
+2026-06-28T16:02:10.308Z	Next.js version : 16.1.3
+2026-06-28T16:02:10.308Z	@opennextjs/cloudflare version: 1.20.1
+2026-06-28T16:02:10.308Z	@opennextjs/aws version: 4.0.2
+2026-06-28T16:02:10.308Z	WARN workerd compatibility_date: 2025-05-01, consider updating your wrangler config to a more recent date to benefit from the latest features and fixes.
+2026-06-28T16:02:10.308Z	
+2026-06-28T16:02:10.308Z	┌─────────────────────────────────┐
+2026-06-28T16:02:10.309Z	│ OpenNext — Building Next.js app │
+2026-06-28T16:02:10.309Z	└─────────────────────────────────┘
+2026-06-28T16:02:10.309Z	
+2026-06-28T16:02:10.321Z	$ bun x opennextjs-cloudflare build
+2026-06-28T16:02:12.409Z	
+2026-06-28T16:02:12.409Z	┌─────────────────────────────┐
+2026-06-28T16:02:12.410Z	│ OpenNext — Cloudflare build │
+2026-06-28T16:02:12.410Z	└─────────────────────────────┘
+2026-06-28T16:02:12.410Z	
+2026-06-28T16:02:12.524Z	WARN The direct mode queue is not recommended for use in production.
+2026-06-28T16:02:12.533Z	App directory: /opt/buildhome/repo
+2026-06-28T16:02:12.534Z	Next.js version : 16.1.3
+2026-06-28T16:02:12.535Z	@opennextjs/cloudflare version: 1.20.1
+2026-06-28T16:02:12.535Z	@opennextjs/aws version: 4.0.2
+2026-06-28T16:02:12.535Z	WARN workerd compatibility_date: 2025-05-01, consider updating your wrangler config to a more recent date to benefit from the latest features and fixes.
+2026-06-28T16:02:12.536Z	
+2026-06-28T16:02:12.537Z	┌─────────────────────────────────┐
+2026-06-28T16:02:12.537Z	│ OpenNext — Building Next.js app │
+2026-06-28T16:02:12.537Z	└─────────────────────────────────┘
+2026-06-28T16:02:12.537Z	
+2026-06-28T16:02:12.550Z	$ bun x opennextjs-cloudflare build
+2026-06-28T16:02:14.558Z	
+2026-06-28T16:02:14.558Z	┌─────────────────────────────┐
+2026-06-28T16:02:14.558Z	│ OpenNext — Cloudflare build │
+2026-06-28T16:02:14.558Z	└─────────────────────────────┘
+2026-06-28T16:02:14.558Z	
+2026-06-28T16:02:14.659Z	WARN The direct mode queue is not recommended for use in production.
+2026-06-28T16:02:14.667Z	App directory: /opt/buildhome/repo
+2026-06-28T16:02:14.668Z	Next.js version : 16.1.3
+2026-06-28T16:02:14.669Z	@opennextjs/cloudflare version: 1.20.1
+2026-06-28T16:02:14.669Z	@opennextjs/aws version: 4.0.2
+2026-06-28T16:02:14.669Z	WARN workerd compatibility_date: 2025-05-01, consider updating your wrangler config to a more recent date to benefit from the latest features and fixes.
+2026-06-28T16:02:14.670Z	
+2026-06-28T16:02:14.670Z	┌─────────────────────────────────┐
+2026-06-28T16:02:14.671Z	│ OpenNext — Building Next.js app │
+2026-06-28T16:02:14.671Z	└─────────────────────────────────┘
+2026-06-28T16:02:14.671Z	
+2026-06-28T16:02:14.681Z	$ bun x opennextjs-cloudflare build
+2026-06-28T16:02:16.520Z	
+2026-06-28T16:02:16.520Z	┌─────────────────────────────┐
+2026-06-28T16:02:16.521Z	│ OpenNext — Cloudflare build │
+2026-06-28T16:02:16.521Z	└─────────────────────────────┘
+2026-06-28T16:02:16.521Z	
+2026-06-28T16:02:16.613Z	WARN The direct mode queue is not recommended for use in production.
+2026-06-28T16:02:16.620Z	App directory: /opt/buildhome/repo
+2026-06-28T16:02:16.620Z	Next.js version : 16.1.3
+2026-06-28T16:02:16.621Z	@opennextjs/cloudflare version: 1.20.1
+2026-06-28T16:02:16.621Z	@opennextjs/aws version: 4.0.2
+2026-06-28T16:02:16.621Z	WARN workerd compatibility_date: 2025-05-01, consider updating your wrangler config to a more recent date to benefit from the latest features and fixes.
+2026-06-28T16:02:16.623Z	
+2026-06-28T16:02:16.623Z	┌─────────────────────────────────┐
+2026-06-28T16:02:16.623Z	│ OpenNext — Building Next.js app │
+2026-06-28T16:02:16.623Z	└─────────────────────────────────┘
+2026-06-28T16:02:16.623Z	
+2026-06-28T16:02:16.633Z	$ bun x opennextjs-cloudflare build
+2026-06-28T16:02:18.298Z	
+2026-06-28T16:02:18.298Z	┌─────────────────────────────┐
+2026-06-28T16:02:18.298Z	│ OpenNext — Cloudflare build │
+2026-06-28T16:02:18.298Z	└─────────────────────────────┘
+2026-06-28T16:02:18.298Z	
+2026-06-28T16:02:18.388Z	WARN The direct mode queue is not recommended for use in production.
+2026-06-28T16:02:18.394Z	App directory: /opt/buildhome/repo
+2026-06-28T16:02:18.394Z	Next.js version : 16.1.3
+2026-06-28T16:02:18.395Z	@opennextjs/cloudflare version: 1.20.1
+2026-06-28T16:02:18.395Z	@opennextjs/aws version: 4.0.2
+2026-06-28T16:02:18.395Z	WARN workerd compatibility_date: 2025-05-01, consider updating your wrangler config to a more recent date to benefit from the latest features and fixes.
+2026-06-28T16:02:18.396Z	
+2026-06-28T16:02:18.397Z	┌─────────────────────────────────┐
+2026-06-28T16:02:18.397Z	│ OpenNext — Building Next.js app │
+2026-06-28T16:02:18.397Z	└─────────────────────────────────┘
+2026-06-28T16:02:18.397Z	
+2026-06-28T16:02:18.408Z	$ bun x opennextjs-cloudflare build
+2026-06-28T16:02:20.024Z	
+2026-06-28T16:02:20.024Z	┌─────────────────────────────┐
+2026-06-28T16:02:20.024Z	│ OpenNext — Cloudflare build │
+2026-06-28T16:02:20.024Z	└─────────────────────────────┘
+2026-06-28T16:02:20.024Z	
+2026-06-28T16:02:20.106Z	WARN The direct mode queue is not recommended for use in production.
+2026-06-28T16:02:20.114Z	App directory: /opt/buildhome/repo
+2026-06-28T16:02:20.114Z	Next.js version : 16.1.3
+2026-06-28T16:02:20.115Z	@opennextjs/cloudflare version: 1.20.1
+2026-06-28T16:02:20.115Z	@opennextjs/aws version: 4.0.2
+2026-06-28T16:02:20.115Z	WARN workerd compatibility_date: 2025-05-01, consider updating your wrangler config to a more recent date to benefit from the latest features and fixes.
+2026-06-28T16:02:20.118Z	
+2026-06-28T16:02:20.118Z	┌─────────────────────────────────┐
+2026-06-28T16:02:20.118Z	│ OpenNext — Building Next.js app │
+2026-06-28T16:02:20.118Z	└─────────────────────────────────┘
+2026-06-28T16:02:20.118Z	
+2026-06-28T16:02:20.131Z	$ bun x opennextjs-cloudflare build
+2026-06-28T16:02:21.724Z	
+2026-06-28T16:02:21.725Z	┌─────────────────────────────┐
+2026-06-28T16:02:21.725Z	│ OpenNext — Cloudflare build │
+2026-06-28T16:02:21.725Z	└─────────────────────────────┘
+2026-06-28T16:02:21.725Z	
+2026-06-28T16:02:21.830Z	WARN The direct mode queue is not recommended for use in production.
+2026-06-28T16:02:21.839Z	App directory: /opt/buildhome/repo
+2026-06-28T16:02:21.839Z	Next.js version : 16.1.3
+2026-06-28T16:02:21.840Z	@opennextjs/cloudflare version: 1.20.1
+2026-06-28T16:02:21.840Z	@opennextjs/aws version: 4.0.2
+2026-06-28T16:02:21.840Z	WARN workerd compatibility_date: 2025-05-01, consider updating your wrangler config to a more recent date to benefit from the latest features and fixes.
+2026-06-28T16:02:21.842Z	
+2026-06-28T16:02:21.842Z	┌─────────────────────────────────┐
+2026-06-28T16:02:21.842Z	│ OpenNext — Building Next.js app │
+2026-06-28T16:02:21.842Z	└─────────────────────────────────┘
+2026-06-28T16:02:21.842Z	
+2026-06-28T16:02:21.854Z	$ bun x opennextjs-cloudflare build
+2026-06-28T16:02:23.614Z	
+2026-06-28T16:02:23.615Z	┌─────────────────────────────┐
+2026-06-28T16:02:23.615Z	│ OpenNext — Cloudflare build │
+2026-06-28T16:02:23.615Z	└─────────────────────────────┘
+2026-06-28T16:02:23.615Z	
+2026-06-28T16:02:23.719Z	WARN The direct mode queue is not recommended for use in production.
+2026-06-28T16:02:23.731Z	App directory: /opt/buildhome/repo
+2026-06-28T16:02:23.731Z	Next.js version : 16.1.3
+2026-06-28T16:02:23.733Z	@opennextjs/cloudflare version: 1.20.1
+2026-06-28T16:02:23.733Z	@opennextjs/aws version: 4.0.2
+2026-06-28T16:02:23.733Z	WARN workerd compatibility_date: 2025-05-01, consider updating your wrangler config to a more recent date to benefit from the latest features and fixes.
+2026-06-28T16:02:23.735Z	
+2026-06-28T16:02:23.735Z	┌─────────────────────────────────┐
+2026-06-28T16:02:23.735Z	│ OpenNext — Building Next.js app │
+2026-06-28T16:02:23.735Z	└─────────────────────────────────┘
+2026-06-28T16:02:23.735Z	
+2026-06-28T16:02:23.747Z	$ bun x opennextjs-cloudflare build
+2026-06-28T16:02:25.590Z	
+2026-06-28T16:02:25.590Z	┌─────────────────────────────┐
+2026-06-28T16:02:25.590Z	│ OpenNext — Cloudflare build │
+2026-06-28T16:02:25.590Z	└─────────────────────────────┘
+2026-06-28T16:02:25.590Z	
+2026-06-28T16:02:25.699Z	WARN The direct mode queue is not recommended for use in production.
+2026-06-28T16:02:25.707Z	App directory: /opt/buildhome/repo
+2026-06-28T16:02:25.708Z	Next.js version : 16.1.3
+2026-06-28T16:02:25.709Z	@opennextjs/cloudflare version: 1.20.1
+2026-06-28T16:02:25.709Z	@opennextjs/aws version: 4.0.2
+2026-06-28T16:02:25.709Z	WARN workerd compatibility_date: 2025-05-01, consider updating your wrangler config to a more recent date to benefit from the latest features and fixes.
+2026-06-28T16:02:25.710Z	
+2026-06-28T16:02:25.711Z	┌─────────────────────────────────┐
+2026-06-28T16:02:25.711Z	│ OpenNext — Building Next.js app │
+2026-06-28T16:02:25.711Z	└─────────────────────────────────┘
+2026-06-28T16:02:25.711Z	
+2026-06-28T16:02:25.722Z	$ bun x opennextjs-cloudflare build
+2026-06-28T16:02:28.072Z	
+2026-06-28T16:02:28.073Z	┌─────────────────────────────┐
+2026-06-28T16:02:28.073Z	│ OpenNext — Cloudflare build │
+2026-06-28T16:02:28.073Z	└─────────────────────────────┘
+2026-06-28T16:02:28.073Z	
+2026-06-28T16:02:28.168Z	WARN The direct mode queue is not recommended for use in production.
+2026-06-28T16:02:28.179Z	App directory: /opt/buildhome/repo
+2026-06-28T16:02:28.179Z	Next.js version : 16.1.3
+2026-06-28T16:02:28.180Z	@opennextjs/cloudflare version: 1.20.1
+2026-06-28T16:02:28.180Z	@opennextjs/aws version: 4.0.2
+2026-06-28T16:02:28.180Z	WARN workerd compatibility_date: 2025-05-01, consider updating your wrangler config to a more recent date to benefit from the latest features and fixes.
+2026-06-28T16:02:28.182Z	
+2026-06-28T16:02:28.182Z	┌─────────────────────────────────┐
+2026-06-28T16:02:28.182Z	│ OpenNext — Building Next.js app │
+2026-06-28T16:02:28.182Z	└─────────────────────────────────┘
+2026-06-28T16:02:28.182Z	
+2026-06-28T16:02:28.192Z	$ bun x opennextjs-cloudflare build
+2026-06-28T16:02:29.817Z	
+2026-06-28T16:02:29.818Z	┌─────────────────────────────┐
+2026-06-28T16:02:29.818Z	│ OpenNext — Cloudflare build │
+2026-06-28T16:02:29.818Z	└─────────────────────────────┘
+2026-06-28T16:02:29.818Z	
+2026-06-28T16:02:29.903Z	WARN The direct mode queue is not recommended for use in production.
+2026-06-28T16:02:29.912Z	App directory: /opt/buildhome/repo
+2026-06-28T16:02:29.912Z	Next.js version : 16.1.3
+2026-06-28T16:02:29.913Z	@opennextjs/cloudflare version: 1.20.1
+2026-06-28T16:02:29.913Z	@opennextjs/aws version: 4.0.2
+2026-06-28T16:02:29.913Z	WARN workerd compatibility_date: 2025-05-01, consider updating your wrangler config to a more recent date to benefit from the latest features and fixes.
+2026-06-28T16:02:29.915Z	
+2026-06-28T16:02:29.915Z	┌─────────────────────────────────┐
+2026-06-28T16:02:29.915Z	│ OpenNext — Building Next.js app │
+2026-06-28T16:02:29.915Z	└─────────────────────────────────┘
+2026-06-28T16:02:29.915Z	
+2026-06-28T16:02:29.926Z	$ bun x opennextjs-cloudflare build
+2026-06-28T16:02:31.808Z	
+2026-06-28T16:02:31.809Z	┌─────────────────────────────┐
+2026-06-28T16:02:31.809Z	│ OpenNext — Cloudflare build │
+2026-06-28T16:02:31.809Z	└─────────────────────────────┘
+2026-06-28T16:02:31.810Z	
+2026-06-28T16:02:31.896Z	WARN The direct mode queue is not recommended for use in production.
+2026-06-28T16:02:31.906Z	App directory: /opt/buildhome/repo
+2026-06-28T16:02:31.907Z	Next.js version : 16.1.3
+2026-06-28T16:02:31.908Z	@opennextjs/cloudflare version: 1.20.1
+2026-06-28T16:02:31.908Z	@opennextjs/aws version: 4.0.2
+2026-06-28T16:02:31.909Z	WARN workerd compatibility_date: 2025-05-01, consider updating your wrangler config to a more recent date to benefit from the latest features and fixes.
+2026-06-28T16:02:31.912Z	
+2026-06-28T16:02:31.912Z	┌─────────────────────────────────┐
+2026-06-28T16:02:31.912Z	│ OpenNext — Building Next.js app │
+2026-06-28T16:02:31.913Z	└─────────────────────────────────┘
+2026-06-28T16:02:31.913Z	
+2026-06-28T16:02:31.925Z	$ bun x opennextjs-cloudflare build
+2026-06-28T16:02:33.796Z	
+2026-06-28T16:02:33.796Z	┌─────────────────────────────┐
+2026-06-28T16:02:33.796Z	│ OpenNext — Cloudflare build │
+2026-06-28T16:02:33.796Z	└─────────────────────────────┘
+2026-06-28T16:02:33.796Z	
+2026-06-28T16:02:33.914Z	WARN The direct mode queue is not recommended for use in production.
+2026-06-28T16:02:33.924Z	App directory: /opt/buildhome/repo
+2026-06-28T16:02:33.924Z	Next.js version : 16.1.3
+2026-06-28T16:02:33.926Z	@opennextjs/cloudflare version: 1.20.1
+2026-06-28T16:02:33.926Z	@opennextjs/aws version: 4.0.2
+2026-06-28T16:02:33.926Z	WARN workerd compatibility_date: 2025-05-01, consider updating your wrangler config to a more recent date to benefit from the latest features and fixes.
+2026-06-28T16:02:33.929Z	
+2026-06-28T16:02:33.929Z	┌─────────────────────────────────┐
+2026-06-28T16:02:33.930Z	│ OpenNext — Building Next.js app │
+2026-06-28T16:02:33.930Z	└─────────────────────────────────┘
+2026-06-28T16:02:33.930Z	
+2026-06-28T16:02:33.941Z	$ bun x opennextjs-cloudflare build
+2026-06-28T16:02:35.928Z	
+2026-06-28T16:02:35.929Z	┌─────────────────────────────┐
+2026-06-28T16:02:35.929Z	│ OpenNext — Cloudflare build │
+2026-06-28T16:02:35.929Z	└─────────────────────────────┘
+2026-06-28T16:02:35.929Z	
+2026-06-28T16:02:36.030Z	WARN The direct mode queue is not recommended for use in production.
+2026-06-28T16:02:36.041Z	App directory: /opt/buildhome/repo
+2026-06-28T16:02:36.041Z	Next.js version : 16.1.3
+2026-06-28T16:02:36.042Z	@opennextjs/cloudflare version: 1.20.1
+2026-06-28T16:02:36.043Z	@opennextjs/aws version: 4.0.2
+2026-06-28T16:02:36.043Z	WARN workerd compatibility_date: 2025-05-01, consider updating your wrangler config to a more recent date to benefit from the latest features and fixes.
+2026-06-28T16:02:36.045Z	
+2026-06-28T16:02:36.045Z	┌─────────────────────────────────┐
+2026-06-28T16:02:36.045Z	│ OpenNext — Building Next.js app │
+2026-06-28T16:02:36.045Z	└─────────────────────────────────┘
+2026-06-28T16:02:36.045Z	
+2026-06-28T16:02:36.061Z	$ bun x opennextjs-cloudflare build
+2026-06-28T16:02:38.793Z	
+2026-06-28T16:02:38.796Z	┌─────────────────────────────┐
+2026-06-28T16:02:38.796Z	│ OpenNext — Cloudflare build │
+2026-06-28T16:02:38.796Z	└─────────────────────────────┘
+2026-06-28T16:02:38.796Z	
+2026-06-28T16:02:50.983Z	WARN The direct mode queue is not recommended for use in production.
+2026-06-28T16:21:57.755Z	Build took too long and was timed out
