@@ -1,3 +1,4 @@
 {
+  "/api/moviebox/route": "app/api/moviebox/route.js",
   "/page": "app/page.js"
 }
