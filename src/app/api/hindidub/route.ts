@@ -128,14 +128,32 @@ async function fetchWithTimeout(url: string, ms = 12000): Promise<{ ok: boolean;
   }
 }
 
+/**
+ * Fetch with retry — HDA is intermittently unreachable from some regions,
+ * so we retry up to 3 times before giving up.
+ */
+async function fetchWithRetry(url: string, ms = 12000, retries = 3): Promise<{ ok: boolean; text: string; status: number }> {
+  for (let i = 0; i < retries; i++) {
+    const result = await fetchWithTimeout(url, ms);
+    if (result.ok && result.text.length > 500) {
+      return result;
+    }
+    // Brief delay before retry (200ms × attempt number)
+    if (i < retries - 1) {
+      await new Promise(resolve => setTimeout(resolve, 200 * (i + 1)));
+    }
+  }
+  return { ok: false, text: "", status: 0 };
+}
+
 export async function GET(req: NextRequest) {
   const url = req.nextUrl.searchParams.get("url");
   if (!url) {
     return NextResponse.json({ error: "Missing url param" }, { status: 400 });
   }
 
-  // Step 1: fetch episode page
-  const ep = await fetchWithTimeout(url, 15000);
+  // Step 1: fetch episode page (with retry — HDA is flaky)
+  const ep = await fetchWithRetry(url, 12000, 3);
   if (!ep.ok) {
     return NextResponse.json(
       { error: `Episode page fetch failed (HTTP ${ep.status})` },
@@ -148,7 +166,7 @@ export async function GET(req: NextRequest) {
   // Step 2: if we got an embed URL but no direct stream, fetch the embed page
   // to try to extract a direct .mp4 URL (for download support)
   if (result.embedUrl && !result.streamUrl) {
-    const player = await fetchWithTimeout(result.embedUrl, 10000);
+    const player = await fetchWithRetry(result.embedUrl, 10000, 2);
     if (player.ok) {
       // Look for .mp4 or .m3u8 in the player page
       const streamMatch = player.text.match(/(https?:\/\/[^\s"'<>]+\.(?:mp4|m3u8)[^\s"'<>]*)/i);

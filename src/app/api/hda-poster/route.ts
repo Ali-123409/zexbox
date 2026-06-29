@@ -44,6 +44,18 @@ async function fetchWithTimeout(url: string, ms = 10000): Promise<{ ok: boolean;
   }
 }
 
+/**
+ * Fetch with retry — HDA is intermittently unreachable from some regions.
+ */
+async function fetchWithRetry(url: string, ms = 10000, retries = 3): Promise<{ ok: boolean; text: string; status: number }> {
+  for (let i = 0; i < retries; i++) {
+    const result = await fetchWithTimeout(url, ms);
+    if (result.ok && result.text.length > 500) return result;
+    if (i < retries - 1) await new Promise(resolve => setTimeout(resolve, 200 * (i + 1)));
+  }
+  return { ok: false, text: "", status: 0 };
+}
+
 function extractPoster(html: string): string | undefined {
   // Pattern 1: data-src='https://cdn.myanimelist.net/images/anime/...'
   let m = html.match(/data-src=['"](https?:\/\/cdn\.myanimelist\.net\/images\/anime\/[^'"]+)['"]/i);
@@ -76,11 +88,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(cached.poster, { status: 302 });
   }
 
-  // Fetch the anime page
+  // Fetch the anime page (with retry — HDA is flaky)
   const url = `https://hindidubanime.com/anime/${slug}/`;
-  const res = await fetchWithTimeout(url, 10000);
+  const res = await fetchWithRetry(url, 10000, 3);
   if (!res.ok) {
-    // Return a placeholder image instead of an error so the <img> doesn't break
+    // Return a placeholder image instead of an error so the <img> doesn't break.
+    // NOTE: We deliberately DON'T cache failures — next request may succeed.
     return NextResponse.redirect(
       "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMzAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzFhMWExZCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iI2ZmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIG9wYWNpdHk9IjAuNCI+Tm8gUG9zdGVyPC90ZXh0Pjwvc3ZnPg==",
       { status: 302 }
@@ -89,13 +102,14 @@ export async function GET(req: NextRequest) {
 
   const poster = extractPoster(res.text);
   if (!poster) {
+    // No poster found in HTML — also don't cache, page structure may change
     return NextResponse.redirect(
       "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMzAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzFhMWExZCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iI2ZmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIG9wYWNpdHk9IjAuNCI+Tm8gUG9zdGVyPC90ZXh0Pjwvc3ZnPg==",
       { status: 302 }
     );
   }
 
-  // Cache for 1 hour
+  // Cache success for 1 hour
   posterCache.set(slug, { poster, expiresAt: Date.now() + CACHE_TTL });
 
   return NextResponse.redirect(poster, { status: 302 });
