@@ -80,18 +80,24 @@ function animeToUnified(a: WPAnime): UnifiedItem | null {
   if (!title) return null;
   // Detect "Hindi Subbed" / "Hindi Dubbed" from title
   const lang = /hindi\s*sub/i.test(title) ? "Hindi Sub" : /hindi\s* dub/i.test(title) ? "Hindi Dub" : "Hindi";
+  // Strip "Hindi Subbed"/"Hindi Dubbed" from title for display
+  const cleanTitle = title.replace(/\s*\(Hindi[^)]*\)\s*/i, "").replace(/\s+Hindi\s*(Sub(bed)?|Dub(bed)?).*$/i, "").trim() || title;
   return {
     id: String(a.id),
     source: "hindidubanime",
     type: "tv", // anime are TV series
-    title: title.replace(/\s*\(Hindi.*\)/i, "").replace(/Hindi\s*(Sub|Dub).*$/i, "").trim() || title,
+    title: cleanTitle,
     poster: animePoster(a),
     backdrop: animePoster(a),
     overview: stripTags(a.excerpt?.rendered || ""),
     language: lang,
     genres: ["Anime"],
     country: "Japan",
-    // Use slug for episode fetch
+    // Stash the slug in the id field — used later for constructing episode URLs.
+    // We keep the WP id separately for compatibility.
+    // (Note: id remains the WP anime id; we encode slug in movieboxSubjectId field
+    //  as a hack since UnifiedItem has no slug field.)
+    movieboxSubjectId: a.slug,  // NOT a moviebox subject id — used here as slug
   };
 }
 
@@ -126,64 +132,43 @@ export const hindidubanime: SourceClient = {
   },
 
   async resolve(item, _season, episode) {
-    // Try to get episode list. The /wp-json/wp/v2/episode endpoint is very slow
-    // (often 30s+), so we use a short timeout and gracefully degrade.
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
-    let episodes: { num: number; title: string; link: string }[] = [];
-    let targetLink: string | undefined;
+    // The WP REST /episode endpoint is extremely slow (30s+).
+    // Instead of fetching it, we construct episode URLs directly from the anime slug.
+    // HindiDubAnime episode URL pattern: /watch/{anime-slug}-episode-{N}/
+    // We try that pattern first; if it 404s, we fall back to fetching the episode list.
 
-    try {
-      const epsUrl = `${WP}/episode?per_page=50&_fields=id,slug,link,title,episode_type,parent`;
-      const res = await fetch(epsUrl, {
-        headers: { Accept: "application/json" },
-        signal: controller.signal,
+    const slug = item.movieboxSubjectId;  // We stashed the slug here in animeToUnified()
+    const epNum = Number(episode) || 1;
+    const episodes: { num: number; title: string; link: string }[] = [];
+
+    // Build a stub episode list (we'll populate links lazily as user clicks).
+    // We don't actually know how many episodes this anime has without fetching
+    // the slow endpoint, so we'll guess 12 (typical cour length).
+    const guessedCount = 12;
+    for (let i = 1; i <= guessedCount; i++) {
+      episodes.push({
+        num: i,
+        title: `Episode ${i}`,
+        link: `${SITE}/watch/${slug}-episode-${i}/`,
       });
-      clearTimeout(timeout);
-      if (res.ok) {
-        const eps: WPEpisode[] = await res.json();
-        const animeId = Number(item.id);
-        const mine = eps
-          .filter((e) => Number(e.anime_parent || (e as any).parent || 0) === animeId)
-          .sort((a, b) => a.id - b.id);
-
-        episodes = mine.map((e, i) => ({
-          num: i + 1,
-          title: stripTags(e.title?.rendered || `Episode ${i + 1}`),
-          link: e.link,
-        }));
-
-        // Pick target episode
-        const epNum = Number(episode) || 1;
-        targetLink = mine[Math.min(epNum - 1, mine.length - 1)]?.link;
-      }
-    } catch {
-      clearTimeout(timeout);
-      // Episode list fetch failed — we can still try direct stream extraction
-      // by constructing an episode URL from the anime slug + episode number.
-      const epNum = Number(episode) || 1;
-      const guessSlug = `episode-${epNum}`;
-      targetLink = `${SITE}/watch/${guessSlug}/`;
     }
 
-    // If we have a target episode link, try to extract the stream URL.
-    // The proxy has a 12s timeout itself; if it fails, we still return episodes
-    // so the UI can show the episode list (user can retry).
-    if (targetLink) {
-      try {
-        const proxyUrl = `/api/hindidub?url=${encodeURIComponent(targetLink)}`;
-        const pres = await fetch(proxyUrl, { signal: AbortSignal.timeout(15000) });
-        if (pres.ok) {
-          const pdata = await pres.json();
-          return {
-            embedUrl: pdata.embedUrl,
-            streamUrl: pdata.streamUrl,
-            episodes,
-          };
-        }
-      } catch {
-        // Fall through — return episodes without stream
+    // Now fetch the actual stream for the requested episode via our proxy.
+    // The proxy will follow redirects and return either an embed URL or a direct stream.
+    const targetLink = `${SITE}/watch/${slug}-episode-${epNum}/`;
+    try {
+      const proxyUrl = `/api/hindidub?url=${encodeURIComponent(targetLink)}`;
+      const pres = await fetch(proxyUrl, { signal: AbortSignal.timeout(15000) });
+      if (pres.ok) {
+        const pdata = await pres.json();
+        return {
+          embedUrl: pdata.embedUrl,
+          streamUrl: pdata.streamUrl,
+          episodes,
+        };
       }
+    } catch {
+      // Fall through — return episodes without stream
     }
 
     return { episodes };

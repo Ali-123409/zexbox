@@ -74,8 +74,19 @@ export async function unifiedResolve(
     } catch {}
   }
 
-  // Strategy 2: NetMirror items with pre-set movieboxSubjectId — use MovieBox resolver
-  if (item.movieboxSubjectId) {
+  // Strategy 2: HindiDubAnime items — use the HDA-specific resolver (NOT moviebox)
+  if (item.source === "hindidubanime") {
+    try {
+      const result: ResolveResult = await hindidubanime.resolve(item, season, episode) as ResolveResult;
+      if (result.streamUrl || result.embedUrl || result.episodes?.length) {
+        return result;
+      }
+    } catch {}
+  }
+
+  // Strategy 3: Items with a real MovieBox subjectid (e.g. NetMirror pre-resolved) — use MovieBox resolver
+  // Skip this for HDA items since their movieboxSubjectId is actually a slug, not a subjectid.
+  if (item.movieboxSubjectId && item.source !== "hindidubanime") {
     const mbItem: UnifiedItem = { ...item, id: item.movieboxSubjectId, source: "moviebox" };
     try {
       const mbResult: ResolveResult = await moviebox.resolve(mbItem, season, episode) as ResolveResult;
@@ -85,7 +96,7 @@ export async function unifiedResolve(
     } catch {}
   }
 
-  // Strategy 3: Use the item's own source
+  // Strategy 4: Use the item's own source
   const src = SOURCES.find((s) => s.id === item.source);
   if (src) {
     try {
@@ -96,7 +107,7 @@ export async function unifiedResolve(
     } catch {}
   }
 
-  // Strategy 4: Fall back to Fmovies direct embed (if we have an imdb_id)
+  // Strategy 5: Fall back to Fmovies direct embed (if we have an imdb_id)
   const imdb = (item as any).imdbId || (item as any).imdb_id;
   if (imdb) {
     try {
