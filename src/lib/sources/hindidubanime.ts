@@ -1,125 +1,19 @@
 /**
- * HindiDubAnime source — WordPress REST API
+ * HindiDubAnime source — wraps our /api/hda proxy
+ *
+ * hindidubanime.com does NOT send CORS headers, so the browser can't call
+ * its WP REST API directly. We route through our own server-side proxy.
  *
  * Verified endpoints (2026-06-29):
- *   GET /wp-json/wp/v2/anime?per_page=20&_embed=1
- *     - Slow (~5-30s) but works. Returns anime series with poster, title, slug.
- *   GET /wp-json/wp/v2/episode?per_page=50&_embed=1
- *     - Fast. Returns episode list (id, title, slug, link, parent anime).
- *   GET /wp-json/wp/v2/anime?search={keyword}
- *     - Returns matching anime.
+ *   Search: GET /api/hda?action=search&keyword={kw}&page=0
+ *   Browse: GET /api/hda?action=browse&page=0
  *
  * Stream discovery:
- *   Episode REST content is empty. We must fetch the episode HTML page
- *   to find iframe src (e.g. abyssplayer.com/{id}) which then resolves
- *   to a Google Storage MP4: storage.googleapis.com/mediastorage/{ts}/{hash}/{id}.mp4
- *
- *   For browser playback, we proxy through /api/hindidub?url={episode_link}
- *   to extract the iframe src server-side (CORS-blocked otherwise).
+ *   Episode stream URLs are extracted by the /api/hindidub proxy, which
+ *   fetches the episode HTML page and parses out the iframe src.
  */
 
 import type { SourceClient, UnifiedItem } from "./types";
-import { https } from "./types";
-
-const SITE = "https://hindidubanime.com";
-const WP = `${SITE}/wp-json/wp/v2`;
-
-interface WPAnime {
-  id: number;
-  slug: string;
-  link: string;
-  title: { rendered: string };
-  excerpt?: { rendered: string };
-  content?: { rendered: string };
-  featured_media?: number;
-  _embedded?: any;
-  // Custom kiranime fields
-  meta?: any;
-}
-
-interface WPEpisode {
-  id: number;
-  slug: string;
-  link: string;
-  title: { rendered: string };
-  episode_type?: string;
-  // parent anime ID
-  anime_parent?: number;
-  _embedded?: any;
-}
-
-function decodeHtml(s: string): string {
-  return s
-    .replace(/&amp;/g, "&")
-    .replace(/&#038;/g, "&")
-    .replace(/&#8217;/g, "'")
-    .replace(/&#8220;/g, '"')
-    .replace(/&#8221;/g, '"')
-    .replace(/&quot;/g, '"')
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&#8211;/g, "-")
-    .replace(/&#8212;/g, "—");
-}
-
-function stripTags(s: string): string {
-  return decodeHtml((s || "").replace(/<[^>]+>/g, "")).trim();
-}
-
-function animePoster(a: WPAnime): string | undefined {
-  // _embedded['wp:featuredmedia'][0].source_url
-  const fm = a._embedded?.["wp:featuredmedia"];
-  if (Array.isArray(fm) && fm[0]) {
-    return https(fm[0].source_url);
-  }
-  return undefined;
-}
-
-function animeToUnified(a: WPAnime): UnifiedItem | null {
-  const rawTitle = stripTags(a.title?.rendered || "");
-  if (!rawTitle) return null;
-
-  // Detect language from title suffix
-  const isHindiSub = /hindi\s*sub/i.test(rawTitle);
-  const isHindiDub = /hindi\s*dub/i.test(rawTitle);
-  const lang = isHindiSub ? "Hindi Sub" : isHindiDub ? "Hindi Dub" : "Hindi";
-
-  // Clean the title by removing common suffixes:
-  //   "Tamon's B-Side Hindi Dubbed" → "Tamon's B-Side"
-  //   "When The Hydrangeas Fall Hindi Subbed" → "When The Hydrangeas Fall"
-  //   "Akane's In A Pinch Hindi Subbed" → "Akane's In A Pinch"
-  //   "Dr. STONE: SCIENCE FUTURE Part 3 Hindi Dubbed" → "Dr. STONE: SCIENCE FUTURE Part 3"
-  const cleanTitle = rawTitle
-    .replace(/\s*\(Hindi[^)]*\)\s*/i, "")           // (Hindi Subbed) / (Hindi Dub)
-    .replace(/\s*Hindi\s*Subtitle\s*$/i, "")         // Hindi Subtitle
-    .replace(/\s+Hindi\s*Subbed\s*$/i, "")           // Hindi Subbed
-    .replace(/\s+Hindi\s*Dubbed\s*$/i, "")           // Hindi Dubbed
-    .replace(/\s+Hindi\s*Sub\s*$/i, "")              // Hindi Sub
-    .replace(/\s+Hindi\s*Dub\s*$/i, "")              // Hindi Dub
-    .replace(/\s+Hindi\s*$/i, "")                    // Hindi
-    .trim() || rawTitle;
-
-  // Poster: WP REST returns featured_media=0, so the actual poster must be fetched
-  // lazily via /api/hda-poster?slug={slug} when the card renders.
-  // We stash a placeholder URL pattern that the MovieCard will use as a fallback.
-  const slug = a.slug || "";
-  const poster = animePoster(a) || `/api/hda-poster?slug=${encodeURIComponent(slug)}`;
-
-  return {
-    id: String(a.id),
-    source: "hindidubanime",
-    type: "tv", // anime are TV series
-    title: cleanTitle,
-    poster,
-    backdrop: poster,
-    overview: stripTags(a.excerpt?.rendered || ""),
-    language: lang,
-    genres: ["Anime"],
-    country: "Japan",
-    // Stash the slug in the movieboxSubjectId field — used later for constructing episode URLs.
-    movieboxSubjectId: slug,  // NOT a moviebox subject id — used here as slug
-  };
-}
 
 export const hindidubanime: SourceClient = {
   id: "hindidubanime",
@@ -128,54 +22,47 @@ export const hindidubanime: SourceClient = {
 
   async browse(page = 1) {
     try {
-      const url = `${WP}/anime?per_page=20&page=${page}&_embed=1&_fields=id,slug,link,title,excerpt,featured_media,_embedded`;
+      const url = `/api/hda?action=browse&page=${page - 1}`;
       const res = await fetch(url, { headers: { Accept: "application/json" } });
       if (!res.ok) return [];
-      const items: WPAnime[] = await res.json();
-      return items.map(animeToUnified).filter(Boolean) as UnifiedItem[];
+      const raw = await res.json();
+      return (raw?.items || []) as UnifiedItem[];
     } catch {
       return [];
     }
   },
 
-  async search(keyword, page = 1) {
+  async search(keyword, page = 0) {
     if (!keyword.trim()) return [];
     try {
-      const url = `${WP}/anime?search=${encodeURIComponent(keyword)}&per_page=20&page=${page + 1}&_embed=1&_fields=id,slug,link,title,excerpt,featured_media,_embedded`;
+      const url = `/api/hda?action=search&keyword=${encodeURIComponent(keyword)}&page=${page}`;
       const res = await fetch(url, { headers: { Accept: "application/json" } });
       if (!res.ok) return [];
-      const items: WPAnime[] = await res.json();
-      return items.map(animeToUnified).filter(Boolean) as UnifiedItem[];
+      const raw = await res.json();
+      return (raw?.items || []) as UnifiedItem[];
     } catch {
       return [];
     }
   },
 
   async resolve(item, _season, episode) {
-    // The WP REST /episode endpoint is extremely slow (30s+).
-    // Instead of fetching it, we construct episode URLs directly from the anime slug.
-    // HindiDubAnime episode URL pattern: /watch/{anime-slug}-episode-{N}/
-    // We try that pattern first; if it 404s, we fall back to fetching the episode list.
-
-    const slug = item.movieboxSubjectId;  // We stashed the slug here in animeToUnified()
+    // Construct episode URL from the anime slug
+    const slug = item.movieboxSubjectId;
     const epNum = Number(episode) || 1;
     const episodes: { num: number; title: string; link: string }[] = [];
 
-    // Build a stub episode list (we'll populate links lazily as user clicks).
-    // We don't actually know how many episodes this anime has without fetching
-    // the slow endpoint, so we'll guess 12 (typical cour length).
+    // Build a stub episode list (guess 12 episodes — typical cour length)
     const guessedCount = 12;
     for (let i = 1; i <= guessedCount; i++) {
       episodes.push({
         num: i,
         title: `Episode ${i}`,
-        link: `${SITE}/watch/${slug}-episode-${i}/`,
+        link: `https://hindidubanime.com/watch/${slug}-episode-${i}/`,
       });
     }
 
-    // Now fetch the actual stream for the requested episode via our proxy.
-    // The proxy will follow redirects and return either an embed URL or a direct stream.
-    const targetLink = `${SITE}/watch/${slug}-episode-${epNum}/`;
+    // Fetch the actual stream via our proxy
+    const targetLink = `https://hindidubanime.com/watch/${slug}-episode-${epNum}/`;
     try {
       const proxyUrl = `/api/hindidub?url=${encodeURIComponent(targetLink)}`;
       const pres = await fetch(proxyUrl, { signal: AbortSignal.timeout(15000) });
@@ -188,7 +75,7 @@ export const hindidubanime: SourceClient = {
         };
       }
     } catch {
-      // Fall through — return episodes without stream
+      // Fall through
     }
 
     return { episodes };
