@@ -138,7 +138,9 @@ function parseHomeResponse(raw: any) {
     .map((op) => ({
       title: op.title || op.type,
       type: op.type,
-      items: trimItems(op.subjects).slice(0, 30),  // increased from 12 to 30 for longer rows
+      // Cap initial items per row at 12 for fast first load.
+      // The Row component shows a "Load More" button at the end that fetches more.
+      items: trimItems(op.subjects).slice(0, 12),
     }))
     .filter((s: any) => s.items.length > 0);
 

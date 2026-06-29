@@ -76,28 +76,48 @@ function animePoster(a: WPAnime): string | undefined {
 }
 
 function animeToUnified(a: WPAnime): UnifiedItem | null {
-  const title = stripTags(a.title?.rendered || "");
-  if (!title) return null;
-  // Detect "Hindi Subbed" / "Hindi Dubbed" from title
-  const lang = /hindi\s*sub/i.test(title) ? "Hindi Sub" : /hindi\s* dub/i.test(title) ? "Hindi Dub" : "Hindi";
-  // Strip "Hindi Subbed"/"Hindi Dubbed" from title for display
-  const cleanTitle = title.replace(/\s*\(Hindi[^)]*\)\s*/i, "").replace(/\s+Hindi\s*(Sub(bed)?|Dub(bed)?).*$/i, "").trim() || title;
+  const rawTitle = stripTags(a.title?.rendered || "");
+  if (!rawTitle) return null;
+
+  // Detect language from title suffix
+  const isHindiSub = /hindi\s*sub/i.test(rawTitle);
+  const isHindiDub = /hindi\s*dub/i.test(rawTitle);
+  const lang = isHindiSub ? "Hindi Sub" : isHindiDub ? "Hindi Dub" : "Hindi";
+
+  // Clean the title by removing common suffixes:
+  //   "Tamon's B-Side Hindi Dubbed" → "Tamon's B-Side"
+  //   "When The Hydrangeas Fall Hindi Subbed" → "When The Hydrangeas Fall"
+  //   "Akane's In A Pinch Hindi Subbed" → "Akane's In A Pinch"
+  //   "Dr. STONE: SCIENCE FUTURE Part 3 Hindi Dubbed" → "Dr. STONE: SCIENCE FUTURE Part 3"
+  const cleanTitle = rawTitle
+    .replace(/\s*\(Hindi[^)]*\)\s*/i, "")           // (Hindi Subbed) / (Hindi Dub)
+    .replace(/\s*Hindi\s*Subtitle\s*$/i, "")         // Hindi Subtitle
+    .replace(/\s+Hindi\s*Subbed\s*$/i, "")           // Hindi Subbed
+    .replace(/\s+Hindi\s*Dubbed\s*$/i, "")           // Hindi Dubbed
+    .replace(/\s+Hindi\s*Sub\s*$/i, "")              // Hindi Sub
+    .replace(/\s+Hindi\s*Dub\s*$/i, "")              // Hindi Dub
+    .replace(/\s+Hindi\s*$/i, "")                    // Hindi
+    .trim() || rawTitle;
+
+  // Poster: WP REST returns featured_media=0, so the actual poster must be fetched
+  // lazily via /api/hda-poster?slug={slug} when the card renders.
+  // We stash a placeholder URL pattern that the MovieCard will use as a fallback.
+  const slug = a.slug || "";
+  const poster = animePoster(a) || `/api/hda-poster?slug=${encodeURIComponent(slug)}`;
+
   return {
     id: String(a.id),
     source: "hindidubanime",
     type: "tv", // anime are TV series
     title: cleanTitle,
-    poster: animePoster(a),
-    backdrop: animePoster(a),
+    poster,
+    backdrop: poster,
     overview: stripTags(a.excerpt?.rendered || ""),
     language: lang,
     genres: ["Anime"],
     country: "Japan",
-    // Stash the slug in the id field — used later for constructing episode URLs.
-    // We keep the WP id separately for compatibility.
-    // (Note: id remains the WP anime id; we encode slug in movieboxSubjectId field
-    //  as a hack since UnifiedItem has no slug field.)
-    movieboxSubjectId: a.slug,  // NOT a moviebox subject id — used here as slug
+    // Stash the slug in the movieboxSubjectId field — used later for constructing episode URLs.
+    movieboxSubjectId: slug,  // NOT a moviebox subject id — used here as slug
   };
 }
 
@@ -108,7 +128,7 @@ export const hindidubanime: SourceClient = {
 
   async browse(page = 1) {
     try {
-      const url = `${WP}/anime?per_page=40&page=${page}&_embed=1&_fields=id,slug,link,title,excerpt,featured_media,_embedded`;
+      const url = `${WP}/anime?per_page=20&page=${page}&_embed=1&_fields=id,slug,link,title,excerpt,featured_media,_embedded`;
       const res = await fetch(url, { headers: { Accept: "application/json" } });
       if (!res.ok) return [];
       const items: WPAnime[] = await res.json();

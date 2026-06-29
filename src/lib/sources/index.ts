@@ -141,7 +141,7 @@ export async function getUnifiedHome(): Promise<{
 
     // MovieBox sections come back already grouped
     if (home?.sections?.length) {
-      for (const s of home.sections.slice(0, 15)) {  // increased from 8 to 15 sections
+      for (const s of home.sections.slice(0, 8)) {  // 8 sections = fast first load
         const items: UnifiedItem[] = (s.items || []).map((m: any) => ({
           id: String(m.id),
           source: "moviebox" as const,

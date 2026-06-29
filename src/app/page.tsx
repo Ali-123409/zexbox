@@ -524,6 +524,9 @@ function HomeView({ onOpen, onPlay }: { onOpen: (t: DisplayItem) => void; onPlay
   const history = useStore((s) => s.history);
   // Use the unified home hook — pulls from MovieBox + HindiDubAnime in parallel
   const { sections: unifiedSections, loading: unifiedLoading } = useUnifiedHome();
+  // Per-section "loaded more" items — keyed by section title
+  const [extraItems, setExtraItems] = useState<Record<string, DisplayItem[]>>({});
+  const [loadingMoreSection, setLoadingMoreSection] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -581,6 +584,46 @@ function HomeView({ onOpen, onPlay }: { onOpen: (t: DisplayItem) => void; onPlay
 
   const isLoading = loading || unifiedLoading;
 
+  // Load more for a section — uses MovieBox trending endpoint paginated.
+  // For now this only works for MovieBox sections (not HDA), since HDA browse is paginated differently.
+  const handleLoadMore = useCallback(async (sectionTitle: string, sectionType: string) => {
+    if (loadingMoreSection[sectionTitle]) return;
+    setLoadingMoreSection(prev => ({ ...prev, [sectionTitle]: true }));
+    try {
+      // Heuristic: fetch page 2+ from the MovieBox trending endpoint
+      // The h5-api returns more items of the same category
+      const nextPage = Math.floor((extraItems[sectionTitle]?.length || 0) / 18) + 2;
+      const res = await fetch(
+        `https://h5-api.aoneroom.com/wefeed-h5api-bff/subject/trending?page=${nextPage}&perPage=18`
+      ).then(r => r.json()).catch(() => null);
+      if (res?.data?.subjectList) {
+        const newItems = res.data.subjectList.map((it: any) => fromMovieBox({
+          id: it.subjectId || it.id,
+          type: Number(it.subjectType) === 2 || Number(it.subjectType) === 4 ? "tv" : "movie",
+          title: it.title || "Untitled",
+          posterUrl: it.cover?.url,
+          coverUrl: it.cover?.url,
+          rating: Number(it.imdbRatingValue) || undefined,
+          year: it.releaseDate ? String(it.releaseDate).slice(0, 4) : undefined,
+          genres: typeof it.genre === "string" ? it.genre.split(/[,/|]/).map((g: string) => g.trim()).filter(Boolean) : [],
+          country: it.countryName,
+          language: it.language,
+          duration: it.duration,
+          durationSeconds: it.durationSeconds,
+          overview: it.description,
+        } as any));
+        setExtraItems(prev => ({
+          ...prev,
+          [sectionTitle]: [...(prev[sectionTitle] || []), ...newItems],
+        }));
+      }
+    } catch {
+      // silent
+    } finally {
+      setLoadingMoreSection(prev => ({ ...prev, [sectionTitle]: false }));
+    }
+  }, [extraItems, loadingMoreSection]);
+
   return (
     <div>
       {/* Hero Carousel — shows skeleton while loading, no banner text */}
@@ -602,9 +645,22 @@ function HomeView({ onOpen, onPlay }: { onOpen: (t: DisplayItem) => void; onPlay
         )}
 
         {/* Dynamic sections from MovieBox home API + HindiDubAnime */}
-        {allSections.map((s, i) => (
-          <LazyRow key={`${s.title}-${i}`} title={s.title} items={s.items} onOpen={onOpen} />
-        ))}
+        {allSections.map((s, i) => {
+          const extra = extraItems[s.title] || [];
+          const items = [...s.items, ...extra];
+          // Show "Load More" only on MovieBox sections (trending endpoint supports pagination)
+          const hasMore = s.type !== "custom" && !loading;
+          return (
+            <LazyRow
+              key={`${s.title}-${i}`}
+              title={s.title}
+              items={items}
+              onOpen={onOpen}
+              hasMore={hasMore}
+              onLoadMore={hasMore ? () => handleLoadMore(s.title, s.type) : undefined}
+            />
+          );
+        })}
 
         {/* Loading skeleton rows */}
         {isLoading && (
@@ -629,7 +685,10 @@ function HomeView({ onOpen, onPlay }: { onOpen: (t: DisplayItem) => void; onPlay
 }
 
 // Lazy-loaded row — only renders when scrolled into view
-function LazyRow({ title, items, onOpen }: { title: string; items: DisplayItem[]; onOpen: (t: DisplayItem) => void; }) {
+function LazyRow({ title, items, onOpen, hasMore, onLoadMore }: {
+  title: string; items: DisplayItem[]; onOpen: (t: DisplayItem) => void;
+  hasMore?: boolean; onLoadMore?: () => void;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
 
@@ -652,7 +711,7 @@ function LazyRow({ title, items, onOpen }: { title: string; items: DisplayItem[]
   return (
     <div ref={ref}>
       {visible ? (
-        <Row title={title} items={items} onOpen={onOpen} />
+        <Row title={title} items={items} onOpen={onOpen} hasMore={hasMore} onLoadMore={onLoadMore} />
       ) : (
         <SkeletonRow title={title} />
       )}
@@ -788,9 +847,10 @@ function HeroCarousel({ items, onOpen, onPlay }: { items: DisplayItem[]; onOpen:
 }
 
 // ====================== ROW ======================
-function Row({ title, icon, items, onOpen, showProgress }: {
+function Row({ title, icon, items, onOpen, showProgress, onLoadMore, hasMore }: {
   title: string; icon?: React.ReactNode; items: DisplayItem[];
   onOpen: (t: DisplayItem) => void; showProgress?: boolean;
+  onLoadMore?: () => void; hasMore?: boolean;
 }) {
   const scrollRef = useCallback((el: HTMLDivElement | null) => {
     // ref callback — no action needed, just keeping the ref stable
@@ -820,9 +880,14 @@ function Row({ title, icon, items, onOpen, showProgress }: {
           {icon}
           {title}
         </h2>
-        <button className="text-xs text-white/50 hover:text-[#e50914] transition flex items-center gap-1 font-medium">
-          More <ChevronRight className="h-3 w-3" />
-        </button>
+        {hasMore && onLoadMore && (
+          <button
+            onClick={onLoadMore}
+            className="text-xs text-white/50 hover:text-[#e50914] transition flex items-center gap-1 font-medium"
+          >
+            More <ChevronRight className="h-3 w-3" />
+          </button>
+        )}
       </div>
 
       <div className="relative">
@@ -855,6 +920,19 @@ function Row({ title, icon, items, onOpen, showProgress }: {
           {items.map((item) => (
             <MovieCard key={`${item.id}-${item.title}`} item={item} onOpen={() => onOpen(item)} showProgress={showProgress} />
           ))}
+          {/* Load More card — visible at the end of each row when hasMore is true */}
+          {hasMore && onLoadMore && (
+            <button
+              onClick={onLoadMore}
+              className="shrink-0 w-[110px] sm:w-[140px] md:w-[160px] aspect-[2/3] rounded-md bg-[#1a1a1d] hover:bg-[#252528] border border-white/10 hover:border-[#e50914]/40 transition flex flex-col items-center justify-center gap-2 text-white/60 hover:text-white"
+              aria-label={`Load more ${title}`}
+            >
+              <div className="h-10 w-10 rounded-full bg-[#e50914]/20 flex items-center justify-center">
+                <ChevronRight className="h-5 w-5 text-[#e50914]" />
+              </div>
+              <span className="text-xs font-medium text-center px-2">Load More</span>
+            </button>
+          )}
         </div>
       </div>
     </section>
