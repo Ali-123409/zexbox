@@ -1197,16 +1197,14 @@ function SearchView({ onOpen }: { onOpen: (t: DisplayItem) => void; }) {
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<"all" | "movie" | "tv">("all");
   const [sourceFilter, setSourceFilter] = useState<"all" | "moviebox" | "netmirror" | "fmovies" | "hindidubanime" | "catalog">("all");
-  // Unified search — fires MovieBox + NetMirror + Fmovies + HindiDubAnime in parallel
-  const { results: unifiedResults, loading: unifiedLoading, loadingMore, hasMore, loadMore } = useUnifiedSearch(q);
-  // Keep MovieBox search as a supplement (it has different result shapes via the proxy)
-  const { results: mbResults, loading: mbLoading } = useMovieSearch(q);
+  // Unified search — fires ALL sources in parallel, STREAMS results as each source responds.
+  // No more duplicate useMovieSearch call (unified search already includes MovieBox).
+  const { results: unifiedResults, loading: unifiedLoading, loadingMore, hasMore, loadMore, sourceStatus } = useUnifiedSearch(q);
   const localResults = useMemo(() => q.trim() ? searchCatalog(q).map(toDisplay) : [], [q]);
 
   const results = useMemo(() => {
     const unified = unifiedResults.map(fromUnified);
-    const mb = mbResults.map(fromMovieBox);
-    const merged = [...unified, ...mb, ...localResults];
+    const merged = [...unified, ...localResults];
     const seen = new Set<string>();
     return merged
       .filter((r) => {
@@ -1217,9 +1215,9 @@ function SearchView({ onOpen }: { onOpen: (t: DisplayItem) => void; }) {
       })
       .filter((r) => filter === "all" ? true : r.type === filter)
       .filter((r) => sourceFilter === "all" ? true : r.source === sourceFilter);
-  }, [unifiedResults, mbResults, localResults, filter, sourceFilter]);
+  }, [unifiedResults, localResults, filter, sourceFilter]);
 
-  const loading = unifiedLoading || mbLoading;
+  const loading = unifiedLoading;
 
   // Source counts for the filter chips
   const sourceCounts = useMemo(() => {
@@ -1335,6 +1333,25 @@ function SearchView({ onOpen }: { onOpen: (t: DisplayItem) => void; }) {
                   </button>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Live source status — shows which sources are still searching */}
+          {q && loading && (
+            <div className="flex flex-wrap items-center gap-2 text-[11px] text-white/40">
+              <span>Searching:</span>
+              <span className={`flex items-center gap-1 ${sourceStatus.moviebox === "done" ? "text-green-400" : sourceStatus.moviebox === "loading" ? "text-yellow-400" : "text-white/30"}`}>
+                <span className="bg-red-700 px-1 rounded font-bold text-white">MB</span>
+                {sourceStatus.moviebox === "done" ? "✓" : sourceStatus.moviebox === "loading" ? "…" : "·"}
+              </span>
+              <span className={`flex items-center gap-1 ${sourceStatus.netmirror === "done" ? "text-green-400" : sourceStatus.netmirror === "loading" ? "text-yellow-400" : "text-white/30"}`}>
+                <span className="bg-blue-700 px-1 rounded font-bold text-white">NM</span>
+                {sourceStatus.netmirror === "done" ? "✓" : sourceStatus.netmirror === "loading" ? "…" : "·"}
+              </span>
+              <span className={`flex items-center gap-1 ${sourceStatus.hindidubanime === "done" ? "text-green-400" : sourceStatus.hindidubanime === "loading" ? "text-yellow-400" : "text-white/30"}`}>
+                <span className="bg-orange-700 px-1 rounded font-bold text-white">HDA</span>
+                {sourceStatus.hindidubanime === "done" ? "✓" : sourceStatus.hindidubanime === "loading" ? "…" : "·"}
+              </span>
             </div>
           )}
         </div>
