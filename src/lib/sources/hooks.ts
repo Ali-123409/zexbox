@@ -29,42 +29,63 @@ export function useUnifiedSearch(keyword: string) {
   const sourcePageRef = useRef<Record<string, number>>({});
   const sourceHasMoreRef = useRef<Record<string, boolean>>({});
 
-  /** Merge new items into existing results, deduping by title+year+type. */
-  const mergeResults = useCallback((newItems: UnifiedItem[], sourceId: SourceId) => {
-    setResults((prev) => {
-      const seen = new Set(prev.map((r) => `${r.title.toLowerCase().trim()}|${r.year || ""}|${r.type}`));
-      const fresh = newItems.filter((r) => !seen.has(`${r.title.toLowerCase().trim()}|${r.year || ""}|${r.type}`));
-      return [...prev, ...fresh];
-    });
-  }, []);
-
-  /** Fire a single source's search and stream results immediately. */
-  const searchSource = useCallback(async (sourceId: SourceId, q: string, page: number) => {
+  /** Fire a single source's search and stream results immediately.
+   *  Returns the number of NEW items actually added (after dedup). */
+  const searchSource = useCallback(async (sourceId: SourceId, q: string, page: number): Promise<number> => {
     const source = SOURCES.find((s) => s.id === sourceId);
-    if (!source) return;
+    if (!source) return 0;
 
-    setSourceStatus((prev) => ({ ...prev, [sourceId]: "loading" }));
+    // Only show "loading" status for initial search (page 0), not for Load More
+    if (page === 0) {
+      setSourceStatus((prev) => ({ ...prev, [sourceId]: "loading" }));
+    }
 
     try {
       const items = await safeAll(source.search(q, page), 12000);
       if (items.length === 0) {
-        setSourceStatus((prev) => ({ ...prev, [sourceId]: "empty" }));
+        if (page === 0) setSourceStatus((prev) => ({ ...prev, [sourceId]: "empty" }));
+        // No items = this source has no more pages
+        sourceHasMoreRef.current[sourceId] = false;
+        return 0;
+      }
+
+      // Merge and count how many were actually new
+      let newCount = 0;
+      setResults((prev) => {
+        const seen = new Set(prev.map((r) => `${r.title.toLowerCase().trim()}|${r.year || ""}|${r.type}`));
+        const fresh = items.filter((r) => !seen.has(`${r.title.toLowerCase().trim()}|${r.year || ""}|${r.type}`));
+        newCount = fresh.length;
+        return [...prev, ...fresh];
+      });
+
+      if (page === 0) setSourceStatus((prev) => ({ ...prev, [sourceId]: "done" }));
+
+      // If we got items but ALL were dupes, this source doesn't support pagination
+      // (e.g., MovieBox returns the same results for every page).
+      // Set hasMore = false so we don't waste requests on identical pages.
+      if (page > 0 && newCount === 0) {
+        sourceHasMoreRef.current[sourceId] = false;
+      } else if (items.length < 8) {
+        // Few results = likely last page
         sourceHasMoreRef.current[sourceId] = false;
       } else {
-        mergeResults(items, sourceId);
-        setSourceStatus((prev) => ({ ...prev, [sourceId]: "done" }));
-        // Heuristic: if we got a full page, assume more might be available
-        sourceHasMoreRef.current[sourceId] = items.length >= 10;
+        // Full page of new results = more might be available
+        sourceHasMoreRef.current[sourceId] = true;
       }
-    } catch {
-      setSourceStatus((prev) => ({ ...prev, [sourceId]: "empty" }));
-      sourceHasMoreRef.current[sourceId] = false;
-    }
 
-    // Update global hasMore: true if ANY source still has more pages
+      return newCount;
+    } catch {
+      if (page === 0) setSourceStatus((prev) => ({ ...prev, [sourceId]: "empty" }));
+      sourceHasMoreRef.current[sourceId] = false;
+      return 0;
+    }
+  }, []);
+
+  // Update global hasMore after each source completes
+  const updateGlobalHasMore = useCallback(() => {
     const anyHasMore = Object.values(sourceHasMoreRef.current).some((v) => v === true);
     setHasMore(anyHasMore);
-  }, [mergeResults]);
+  }, []);
 
   // Initial search — fires all sources in parallel, streams results
   useEffect(() => {
@@ -89,10 +110,11 @@ export function useUnifiedSearch(keyword: string) {
     const t = setTimeout(async () => {
       if (cancelled) return;
       // Fire all sources in parallel — each streams results independently
-      const promises = SOURCES.map((s) => {
+      const promises = SOURCES.map(async (s) => {
         sourcePageRef.current[s.id] = 0;
         sourceHasMoreRef.current[s.id] = true;
-        return searchSource(s.id, q, 0);
+        await searchSource(s.id, q, 0);
+        updateGlobalHasMore();
       });
       await Promise.allSettled(promises);
       if (!cancelled) setLoading(false);
@@ -102,7 +124,7 @@ export function useUnifiedSearch(keyword: string) {
       cancelled = true;
       clearTimeout(t);
     };
-  }, [keyword, searchSource]);
+  }, [keyword, searchSource, updateGlobalHasMore]);
 
   /** Load More — fetches the next page from sources that still have more. */
   const loadMore = useCallback(async () => {
@@ -117,19 +139,26 @@ export function useUnifiedSearch(keyword: string) {
     }
 
     setLoadingMore(true);
+    let totalNewItems = 0;
     try {
       const promises = sourcesWithMore.map(async (s) => {
         const nextPage = (sourcePageRef.current[s.id] || 0) + 1;
-        await searchSource(s.id, q, nextPage);
+        const newCount = await searchSource(s.id, q, nextPage);
         sourcePageRef.current[s.id] = nextPage;
+        totalNewItems += newCount;
       });
       await Promise.allSettled(promises);
+      updateGlobalHasMore();
+      // If no source returned any new items, hide the Load More button
+      if (totalNewItems === 0) {
+        setHasMore(false);
+      }
     } catch {
       // silent
     } finally {
       setLoadingMore(false);
     }
-  }, [keyword, loadingMore, searchSource]);
+  }, [keyword, loadingMore, searchSource, updateGlobalHasMore]);
 
   return { results, loading, loadingMore, error, hasMore, loadMore, sourceStatus };
 }
