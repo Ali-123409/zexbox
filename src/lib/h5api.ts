@@ -138,7 +138,7 @@ function parseHomeResponse(raw: any) {
     .map((op) => ({
       title: op.title || op.type,
       type: op.type,
-      items: trimItems(op.subjects).slice(0, 12),
+      items: trimItems(op.subjects).slice(0, 30),  // increased from 12 to 30 for longer rows
     }))
     .filter((s: any) => s.items.length > 0);
 
@@ -252,15 +252,15 @@ export async function fetchTrendingDirect(page = 0, perPage = 18): Promise<Movie
  * Our proxy already returns items in the trimmed format (id, type, title, etc.),
  * so we just pass them through directly.
  */
-export async function searchDirect(keyword: string, _page = 0, _perPage = 20): Promise<MovieItem[]> {
+export async function searchDirect(keyword: string, page = 0, _perPage = 20): Promise<MovieItem[]> {
   if (!keyword.trim()) return [];
-  const cacheKey = `search:${keyword}`;
+  const cacheKey = `search:${keyword}:${page}`;
   const cached = cacheGet<MovieItem[]>(cacheKey);
   if (cached) return cached;
 
   try {
     const res = await fetch(
-      `/api/moviebox?action=search&keyword=${encodeURIComponent(keyword)}`
+      `/api/moviebox?action=search&keyword=${encodeURIComponent(keyword)}&page=${page}`
     );
     const raw = await res.json();
     // Our proxy returns items already in MovieItem format (id, type, title, etc.)

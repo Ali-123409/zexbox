@@ -38,7 +38,7 @@ import { fetchHomeDirect, fetchPlayDirect } from "@/lib/h5api";
 import { optimizeImage } from "@/lib/image";
 import { useMovieSearch, useDetail } from "@/lib/use-moviebox";
 import { useUnifiedSearch, useUnifiedHome } from "@/lib/sources/hooks";
-import { unifiedResolve } from "@/lib/sources";
+import { unifiedResolve, unifiedSearch } from "@/lib/sources";
 import type { UnifiedItem } from "@/lib/sources/types";
 import { buildFmoviesEmbed } from "@/lib/sources/fmovies";
 import Player from "@/components/zexbox/Player";
@@ -440,9 +440,9 @@ function Header({ view, setView }: { view: View; setView: (v: View) => void }) {
 function BottomNav({ view, setView }: { view: View; setView: (v: View) => void }) {
   const items: { v: View; icon: any; label: string }[] = [
     { v: "home", icon: HomeIcon, label: "Home" },
-    { v: "movies", icon: Film, label: "Movie" },
-    { v: "tv", icon: Tv, label: "TV Show" },
-    { v: "downloads", icon: DownloadIcon, label: "Downloads" },
+    { v: "movies", icon: Film, label: "Movies" },
+    { v: "search", icon: SearchIcon, label: "Search" },
+    { v: "tv", icon: Tv, label: "TV" },
     { v: "profile", icon: UserIcon, label: "Me" },
   ];
   return (
@@ -869,10 +869,22 @@ function MovieCard({ item, onOpen, showProgress }: { item: DisplayItem; onOpen: 
   const blurPoster = optimizeImage(item.poster, 20);
   const [loaded, setLoaded] = useState(false);
 
+  // Source tag config — short 2-letter badges with distinct colors
+  const sourceTag = (() => {
+    switch (item.source) {
+      case "moviebox": return { code: "MB", color: "bg-red-600/90", title: "MovieBox" };
+      case "netmirror": return { code: "NM", color: "bg-blue-600/90", title: "NetMirror" };
+      case "fmovies": return { code: "FM", color: "bg-purple-600/90", title: "Fmovies" };
+      case "hindidubanime": return { code: "HDA", color: "bg-orange-600/90", title: "HindiDubAnime" };
+      case "catalog": return { code: "CAT", color: "bg-zinc-600/90", title: "Catalog" };
+      default: return null;
+    }
+  })();
+
   return (
     <button
       onClick={onOpen}
-      className="group relative shrink-0 w-[120px] sm:w-[150px] md:w-[170px] text-left"
+      className="group relative shrink-0 w-[110px] sm:w-[140px] md:w-[160px] text-left"
       aria-label={`Open ${item.title}`}
     >
       <div className="relative aspect-[2/3] rounded-md overflow-hidden bg-[#1a1a1d] ring-1 ring-white/[0.04] group-hover:ring-white/20 transition shadow-md">
@@ -897,6 +909,15 @@ function MovieCard({ item, onOpen, showProgress }: { item: DisplayItem; onOpen: 
         ) : (
           <div className="flex items-center justify-center h-full text-white/30 text-xs p-2 text-center">{item.title}</div>
         )}
+        {/* Source tag — top-left corner, short code */}
+        {sourceTag && (
+          <div
+            className={`absolute top-1.5 left-1.5 ${sourceTag.color} backdrop-blur px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wide text-white shadow`}
+            title={sourceTag.title}
+          >
+            {sourceTag.code}
+          </div>
+        )}
         {/* Rating badge */}
         {item.rating ? (
           <div className="absolute top-1.5 right-1.5 flex items-center gap-0.5 rounded bg-black/80 backdrop-blur px-1.5 py-0.5 text-[11px]">
@@ -904,6 +925,12 @@ function MovieCard({ item, onOpen, showProgress }: { item: DisplayItem; onOpen: 
             <span className="font-semibold">{item.rating.toFixed(1)}</span>
           </div>
         ) : null}
+        {/* Language/region tag — bottom-left, only if known */}
+        {item.language && (
+          <div className="absolute bottom-1.5 left-1.5 bg-black/80 backdrop-blur px-1.5 py-0.5 rounded text-[9px] font-medium text-white/90 uppercase tracking-wide">
+            {item.language.split(",")[0].slice(0, 10)}
+          </div>
+        )}
         {/* Hover play overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition flex items-end justify-center p-3">
           <div className="bg-white/95 text-black rounded-full p-2.5 group-hover:scale-110 transition">
@@ -928,22 +955,71 @@ function MovieCard({ item, onOpen, showProgress }: { item: DisplayItem; onOpen: 
 }
 
 // ====================== CATEGORY VIEW (Movies / TV) ======================
+
+// Language / region filter options — based on what MovieBox catalog provides.
+// Each filter maps to a search keyword that returns relevant content from all sources.
+const LANG_FILTERS = [
+  { id: "all",       label: "All",          icon: Globe },
+  { id: "english",   label: "English",      icon: Film },
+  { id: "hindi",     label: "Hindi",        icon: Film },
+  { id: "bollywood", label: "Bollywood",    icon: Film },
+  { id: "punjabi",   label: "Punjabi",      icon: Film },
+  { id: "tamil",     label: "Tamil",        icon: Film },
+  { id: "telugu",    label: "Telugu",       icon: Film },
+  { id: "korean",    label: "K-Drama",      icon: Tv },
+  { id: "chinese",   label: "C-Drama",      icon: Tv },
+  { id: "anime",     label: "Anime",        icon: Tv },
+  { id: "nollywood", label: "Nollywood",    icon: Film },
+  { id: "spanish",   label: "Spanish",      icon: Film },
+];
+
 function CategoryView({ category, onOpen }: { category: "movie" | "tv"; onOpen: (t: DisplayItem) => void; }) {
   const [items, setItems] = useState<DisplayItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [langFilter, setLangFilter] = useState("all");
+
+  // When language filter changes, switch to search-based loading
+  useEffect(() => {
+    setPage(1);
+    setItems([]);
+    setHasMore(true);
+  }, [langFilter, category]);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     (async () => {
       try {
-        const res = await fetch(`/api/moviebox?action=list&category=${category}&page=${page}&size=30`).then((r) => r.json());
-        if (cancelled) return;
-        const newItems = (res.items || []).map(fromMovieBox);
-        setItems(prev => page === 1 ? newItems : [...prev, ...newItems]);
-        setHasMore(res.pager?.hasMore || false);
+        let newItems: DisplayItem[] = [];
+        if (langFilter === "all") {
+          // Default: use the list endpoint (curated catalog)
+          const res = await fetch(`/api/moviebox?action=list&category=${category}&page=${page}&size=30`).then((r) => r.json());
+          newItems = (res.items || []).map(fromMovieBox);
+          if (cancelled) return;
+          setItems(prev => page === 1 ? newItems : [...prev, ...newItems]);
+          setHasMore(res.pager?.hasMore || newItems.length >= 20);
+        } else {
+          // Filtered by language — use search across all sources
+          // For anime, also pull from HindiDubAnime source via unified search
+          const searchKeyword = langFilter === "anime" && category === "tv" ? "anime" : langFilter;
+          const unified = await unifiedSearch(searchKeyword, page - 1);
+          newItems = unified
+            .filter((u) => category === "movie" ? u.type === "movie" : u.type === "tv")
+            .map(fromUnified);
+          if (cancelled) return;
+          // Dedupe by title+year
+          const seen = new Set<string>();
+          const fresh = newItems.filter((r) => {
+            const key = `${r.title.toLowerCase().trim()}|${r.year || ""}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
+          setItems(prev => page === 1 ? fresh : [...prev, ...fresh]);
+          setHasMore(fresh.length >= 8);
+        }
       } catch {
         if (!cancelled) setItems([]);
       } finally {
@@ -951,7 +1027,7 @@ function CategoryView({ category, onOpen }: { category: "movie" | "tv"; onOpen: 
       }
     })();
     return () => { cancelled = true; };
-  }, [category, page]);
+  }, [category, page, langFilter]);
 
   const title = category === "movie" ? "Movies" : "TV Shows";
 
@@ -963,6 +1039,40 @@ function CategoryView({ category, onOpen }: { category: "movie" | "tv"; onOpen: 
           {title}
         </h1>
         <span className="text-sm text-white/50">{items.length} titles</span>
+      </div>
+
+      {/* Language / region filter chips — horizontally scrollable on mobile */}
+      <div className="-mx-4 sm:mx-0 px-4 sm:px-0">
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 -mb-2">
+          {LANG_FILTERS.map((f) => {
+            const Icon = f.icon;
+            const active = langFilter === f.id;
+            return (
+              <button
+                key={f.id}
+                onClick={() => setLangFilter(f.id)}
+                className={`shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-medium border transition ${
+                  active
+                    ? "bg-[#e50914] border-[#e50914] text-white"
+                    : "bg-[#1a1a1d] border-white/10 text-white/70 hover:bg-white/5 hover:text-white"
+                }`}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {f.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Source legend — small badges showing which sources are active */}
+      <div className="flex flex-wrap items-center gap-2 text-[11px] text-white/50">
+        <span className="text-white/40">Sources:</span>
+        <span className="flex items-center gap-1"><span className="bg-red-600/90 px-1.5 py-0.5 rounded text-white font-bold">MB</span>MovieBox</span>
+        <span className="flex items-center gap-1"><span className="bg-blue-600/90 px-1.5 py-0.5 rounded text-white font-bold">NM</span>NetMirror</span>
+        {langFilter === "anime" && (
+          <span className="flex items-center gap-1"><span className="bg-orange-600/90 px-1.5 py-0.5 rounded text-white font-bold">HDA</span>HindiDubAnime</span>
+        )}
       </div>
 
       {loading && items.length === 0 && (
@@ -979,11 +1089,25 @@ function CategoryView({ category, onOpen }: { category: "movie" | "tv"; onOpen: 
         ))}
       </div>
 
+      {loading && items.length > 0 && (
+        <div className="flex justify-center py-4">
+          <Loader2 className="h-5 w-5 animate-spin text-[#e50914]" />
+        </div>
+      )}
+
       {hasMore && !loading && (
         <div className="flex justify-center pt-4">
           <Button onClick={() => setPage(p => p + 1)} variant="outline" className="border-white/20 hover:bg-white/10">
             Load More
           </Button>
+        </div>
+      )}
+
+      {!loading && items.length === 0 && (
+        <div className="text-center py-16 text-white/50">
+          <Film className="h-12 w-12 mx-auto mb-3 opacity-30" />
+          <p className="text-lg">No {title.toLowerCase()} found for this filter</p>
+          <p className="text-sm mt-1">Try a different language or category.</p>
         </div>
       )}
     </div>
@@ -994,8 +1118,9 @@ function CategoryView({ category, onOpen }: { category: "movie" | "tv"; onOpen: 
 function SearchView({ onOpen }: { onOpen: (t: DisplayItem) => void; }) {
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<"all" | "movie" | "tv">("all");
+  const [sourceFilter, setSourceFilter] = useState<"all" | "moviebox" | "netmirror" | "fmovies" | "hindidubanime" | "catalog">("all");
   // Unified search — fires MovieBox + NetMirror + Fmovies + HindiDubAnime in parallel
-  const { results: unifiedResults, loading: unifiedLoading } = useUnifiedSearch(q);
+  const { results: unifiedResults, loading: unifiedLoading, loadingMore, hasMore, loadMore } = useUnifiedSearch(q);
   // Keep MovieBox search as a supplement (it has different result shapes via the proxy)
   const { results: mbResults, loading: mbLoading } = useMovieSearch(q);
   const localResults = useMemo(() => q.trim() ? searchCatalog(q).map(toDisplay) : [], [q]);
@@ -1005,15 +1130,27 @@ function SearchView({ onOpen }: { onOpen: (t: DisplayItem) => void; }) {
     const mb = mbResults.map(fromMovieBox);
     const merged = [...unified, ...mb, ...localResults];
     const seen = new Set<string>();
-    return merged.filter((r) => {
-      const key = `${r.title.toLowerCase().trim()}|${r.year || ""}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    }).filter((r) => filter === "all" ? true : r.type === filter);
-  }, [unifiedResults, mbResults, localResults, filter]);
+    return merged
+      .filter((r) => {
+        const key = `${r.title.toLowerCase().trim()}|${r.year || ""}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .filter((r) => filter === "all" ? true : r.type === filter)
+      .filter((r) => sourceFilter === "all" ? true : r.source === sourceFilter);
+  }, [unifiedResults, mbResults, localResults, filter, sourceFilter]);
 
   const loading = unifiedLoading || mbLoading;
+
+  // Source counts for the filter chips
+  const sourceCounts = useMemo(() => {
+    const counts = { moviebox: 0, netmirror: 0, fmovies: 0, hindidubanime: 0, catalog: 0 };
+    results.forEach((r) => {
+      if (counts[r.source as keyof typeof counts] !== undefined) counts[r.source as keyof typeof counts]++;
+    });
+    return counts;
+  }, [results]);
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-6 space-y-6">
@@ -1042,13 +1179,87 @@ function SearchView({ onOpen }: { onOpen: (t: DisplayItem) => void; }) {
             </div>
           )}
         </div>
-        <Tabs value={filter} onValueChange={(v) => setFilter(v as any)}>
-          <TabsList className="bg-[#1a1a1d] border border-white/10">
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="movie">Movies</TabsTrigger>
-            <TabsTrigger value="tv">TV Shows</TabsTrigger>
-          </TabsList>
-        </Tabs>
+
+        {/* Type filter tabs + source filter chips (mobile-friendly horizontal scroll) */}
+        <div className="space-y-2">
+          <Tabs value={filter} onValueChange={(v) => setFilter(v as any)}>
+            <TabsList className="bg-[#1a1a1d] border border-white/10">
+              <TabsTrigger value="all">All</TabsTrigger>
+              <TabsTrigger value="movie">Movies</TabsTrigger>
+              <TabsTrigger value="tv">TV Shows</TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          {/* Source filter chips — only show when there are results */}
+          {q && results.length > 0 && (
+            <div className="-mx-4 sm:mx-0 px-4 sm:px-0">
+              <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+                <button
+                  onClick={() => setSourceFilter("all")}
+                  className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium border transition ${
+                    sourceFilter === "all"
+                      ? "bg-white text-black border-white"
+                      : "bg-[#1a1a1d] text-white/70 border-white/10 hover:bg-white/5"
+                  }`}
+                >
+                  All Sources ({results.length})
+                </button>
+                {sourceCounts.moviebox > 0 && (
+                  <button
+                    onClick={() => setSourceFilter(sourceFilter === "moviebox" ? "all" : "moviebox")}
+                    className={`shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition ${
+                      sourceFilter === "moviebox"
+                        ? "bg-red-600 text-white border-red-600"
+                        : "bg-[#1a1a1d] text-white/70 border-white/10 hover:bg-white/5"
+                    }`}
+                  >
+                    <span className="bg-red-700 px-1 rounded font-bold">MB</span>
+                    MovieBox ({sourceCounts.moviebox})
+                  </button>
+                )}
+                {sourceCounts.netmirror > 0 && (
+                  <button
+                    onClick={() => setSourceFilter(sourceFilter === "netmirror" ? "all" : "netmirror")}
+                    className={`shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition ${
+                      sourceFilter === "netmirror"
+                        ? "bg-blue-600 text-white border-blue-600"
+                        : "bg-[#1a1a1d] text-white/70 border-white/10 hover:bg-white/5"
+                    }`}
+                  >
+                    <span className="bg-blue-700 px-1 rounded font-bold">NM</span>
+                    NetMirror ({sourceCounts.netmirror})
+                  </button>
+                )}
+                {sourceCounts.hindidubanime > 0 && (
+                  <button
+                    onClick={() => setSourceFilter(sourceFilter === "hindidubanime" ? "all" : "hindidubanime")}
+                    className={`shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition ${
+                      sourceFilter === "hindidubanime"
+                        ? "bg-orange-600 text-white border-orange-600"
+                        : "bg-[#1a1a1d] text-white/70 border-white/10 hover:bg-white/5"
+                    }`}
+                  >
+                    <span className="bg-orange-700 px-1 rounded font-bold">HDA</span>
+                    HindiDubAnime ({sourceCounts.hindidubanime})
+                  </button>
+                )}
+                {sourceCounts.catalog > 0 && (
+                  <button
+                    onClick={() => setSourceFilter(sourceFilter === "catalog" ? "all" : "catalog")}
+                    className={`shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition ${
+                      sourceFilter === "catalog"
+                        ? "bg-zinc-600 text-white border-zinc-600"
+                        : "bg-[#1a1a1d] text-white/70 border-white/10 hover:bg-white/5"
+                    }`}
+                  >
+                    <span className="bg-zinc-700 px-1 rounded font-bold">CAT</span>
+                    Catalog ({sourceCounts.catalog})
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {!q && (
@@ -1077,11 +1288,40 @@ function SearchView({ onOpen }: { onOpen: (t: DisplayItem) => void; }) {
       )}
 
       {results.length > 0 && (
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
-          {results.map((t) => (
-            <MovieCard key={`${t.id}-${t.title}`} item={t} onOpen={() => onOpen(t)} />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+            {results.map((t) => (
+              <MovieCard key={`${t.id}-${t.title}-${t.source}`} item={t} onOpen={() => onOpen(t)} />
+            ))}
+          </div>
+
+          {/* Load More button — fetches next page from all sources in parallel */}
+          {hasMore && !loading && (
+            <div className="flex justify-center pt-4">
+              <Button
+                onClick={loadMore}
+                disabled={loadingMore}
+                variant="outline"
+                className="border-white/20 hover:bg-white/10 min-w-[180px]"
+              >
+                {loadingMore ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Loading more...
+                  </>
+                ) : (
+                  <>Load More Results</>
+                )}
+              </Button>
+            </div>
+          )}
+
+          {!hasMore && results.length > 8 && (
+            <div className="text-center text-xs text-white/40 py-4">
+              End of results — {results.length} titles from all sources
+            </div>
+          )}
+        </>
       )}
     </div>
   );

@@ -233,10 +233,12 @@ export async function GET(req: NextRequest) {
       }
       case "search": {
         const keyword = url.searchParams.get("keyword") || "";
+        const page = Number(url.searchParams.get("page") || "0");
+        const size = Number(url.searchParams.get("size") || "20");
         if (!keyword.trim()) return NextResponse.json({ items: [] });
-        // Search results change by keyword — cache per keyword for 2 min
-        const cacheKey = `search:${keyword}`;
-        const items = await cached(cacheKey, async () => trimItems(normalizeItemsRaw(await searchAll(keyword))), 2 * 60 * 1000);
+        // Search results change by keyword — cache per keyword+page for 2 min
+        const cacheKey = `search:${keyword}:${page}:${size}`;
+        const items = await cached(cacheKey, async () => trimItems(normalizeItemsRaw(await searchAll(keyword, page, size))), 2 * 60 * 1000);
         return NextResponse.json({ items });
       }
       case "suggest": {

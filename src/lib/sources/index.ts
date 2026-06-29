@@ -25,8 +25,9 @@ export const SOURCES: SourceClient[] = [moviebox, netmirror, fmovies, hindiduban
 /**
  * Unified search — fires all sources in parallel, merges results.
  * Empty keyword returns home/trending from browsable sources.
+ * Pass page > 0 to fetch additional results (Load More button).
  */
-export async function unifiedSearch(keyword: string): Promise<UnifiedItem[]> {
+export async function unifiedSearch(keyword: string, page: number = 0): Promise<UnifiedItem[]> {
   const k = keyword.trim();
 
   if (!k) {
@@ -38,9 +39,9 @@ export async function unifiedSearch(keyword: string): Promise<UnifiedItem[]> {
     return results.flat();
   }
 
-  // Parallel search across all sources
+  // Parallel search across all sources (with pagination)
   const results = await Promise.all(
-    SOURCES.map((s) => safeAll(s.search(k), 10000))
+    SOURCES.map((s) => safeAll(s.search(k, page), 10000))
   );
 
   // Dedupe by title+year, keeping first seen (priority order: moviebox, netmirror, fmovies, hindidubanime)
@@ -140,7 +141,7 @@ export async function getUnifiedHome(): Promise<{
 
     // MovieBox sections come back already grouped
     if (home?.sections?.length) {
-      for (const s of home.sections.slice(0, 8)) {
+      for (const s of home.sections.slice(0, 15)) {  // increased from 8 to 15 sections
         const items: UnifiedItem[] = (s.items || []).map((m: any) => ({
           id: String(m.id),
           source: "moviebox" as const,

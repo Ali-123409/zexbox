@@ -43,10 +43,10 @@ export const moviebox: SourceClient = {
     }
   },
 
-  async search(keyword, _page = 0) {
+  async search(keyword, page = 0) {
     if (!keyword.trim()) return [];
     try {
-      const items = await searchDirect(keyword);
+      const items = await searchDirect(keyword, page);
       return items.map(fromMovieBox);
     } catch {
       return [];

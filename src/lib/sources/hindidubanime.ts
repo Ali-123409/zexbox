@@ -108,7 +108,7 @@ export const hindidubanime: SourceClient = {
 
   async browse(page = 1) {
     try {
-      const url = `${WP}/anime?per_page=30&page=${page}&_embed=1&_fields=id,slug,link,title,excerpt,featured_media,_embedded`;
+      const url = `${WP}/anime?per_page=40&page=${page}&_embed=1&_fields=id,slug,link,title,excerpt,featured_media,_embedded`;
       const res = await fetch(url, { headers: { Accept: "application/json" } });
       if (!res.ok) return [];
       const items: WPAnime[] = await res.json();
@@ -118,10 +118,10 @@ export const hindidubanime: SourceClient = {
     }
   },
 
-  async search(keyword, _page = 0) {
+  async search(keyword, page = 1) {
     if (!keyword.trim()) return [];
     try {
-      const url = `${WP}/anime?search=${encodeURIComponent(keyword)}&per_page=20&_embed=1&_fields=id,slug,link,title,excerpt,featured_media,_embedded`;
+      const url = `${WP}/anime?search=${encodeURIComponent(keyword)}&per_page=20&page=${page + 1}&_embed=1&_fields=id,slug,link,title,excerpt,featured_media,_embedded`;
       const res = await fetch(url, { headers: { Accept: "application/json" } });
       if (!res.ok) return [];
       const items: WPAnime[] = await res.json();
