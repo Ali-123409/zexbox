@@ -4,7 +4,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 export interface HistoryEntry {
-  id: number;
+  id: number | string; // Store original ID (string for MovieBox, number for catalog)
   type: "movie" | "tv";
   title: string;
   poster: string;
@@ -14,7 +14,7 @@ export interface HistoryEntry {
 }
 
 export interface DownloadEntry {
-  id: number;
+  id: number | string;
   type: "movie" | "tv";
   title: string;
   poster: string;
@@ -30,7 +30,7 @@ export interface DownloadEntry {
 }
 
 export interface WatchlistEntry {
-  id: number;
+  id: number | string;
   type: "movie" | "tv";
   title: string;
   poster: string;

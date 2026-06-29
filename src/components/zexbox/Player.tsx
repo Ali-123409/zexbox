@@ -261,8 +261,12 @@ export default function Player({
               ref={videoRef}
               poster={poster}
               className="h-full w-full"
+              style={{ userSelect: "none", WebkitUserSelect: "none" }}
               title={title}
               onClick={togglePlay}
+              onContextMenu={(e) => e.preventDefault()}
+              controlsList="nodownload noremoteplayback noplaybackrate"
+              disablePictureInPicture
               playsInline
             />
           )}

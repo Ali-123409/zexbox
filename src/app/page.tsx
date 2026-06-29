@@ -180,7 +180,7 @@ export default function Page() {
 
             setPlayer(playerState);
             useStore.getState().addToHistory({
-              id: typeof item.id === "string" ? hashStr(item.id) : item.id,
+              id: String(item.id),
               type: item.type, title: item.title, poster: item.poster || "",
               progress: 0, episode,
             });
@@ -204,7 +204,7 @@ export default function Page() {
       setPlayer({ title: isTv && episode ? `${item.title} - ${episode}` : item.title, embedUrl, poster: item.backdrop || item.poster });
     }
     useStore.getState().addToHistory({
-      id: typeof item.id === "string" ? hashStr(item.id) : item.id,
+      id: String(item.id),
       type: item.type, title: item.title, poster: item.poster || "",
       progress: 0, episode,
     });
@@ -460,7 +460,7 @@ function HomeView({ onOpen, onPlay }: { onOpen: (t: DisplayItem) => void; onPlay
             icon={<History className="h-5 w-5 text-[#e50914]" />}
             items={history.slice(0, 10).map((h) => ({
               id: h.id, type: h.type, title: h.title, rating: 0, genres: [],
-              overview: "", poster: h.poster, progress: h.progress, source: "catalog" as const,
+              overview: "", poster: h.poster, progress: h.progress, source: "moviebox" as const,
             }))}
             onOpen={onOpen}
             showProgress
@@ -952,6 +952,8 @@ function DetailView({ item, initialEpisode, onPlay, onBack, onOpen }: {
   item: DisplayItem; initialEpisode?: string; onPlay: (episode?: string) => void; onBack: () => void; onOpen: (t: DisplayItem) => void;
 }) {
   const [selectedSeason, setSelectedSeason] = useState(1);
+  const [downloadSeason, setDownloadSeason] = useState(1);
+  const [downloadEpisode, setDownloadEpisode] = useState(1);
   const watchlist = useStore((s) => s.watchlist);
   const toggleWatchlist = useStore((s) => s.toggleWatchlist);
   const startDownload = useStore((s) => s.startDownload);
@@ -1012,10 +1014,10 @@ function DetailView({ item, initialEpisode, onPlay, onBack, onOpen }: {
     let actualSizeMB = q.res >= 720 ? 1500 : q.res >= 480 ? 700 : 350;
 
     try {
-      // Build the play URL with se/ep for TV
+      // Build the play URL with se/ep for TV — use downloadSeason/downloadEpisode
       let playUrl = `/api/moviebox?action=play&subjectId=${item.id}`;
       if (item.type === "tv") {
-        playUrl += `&se=${selectedSeason}&ep=1`;
+        playUrl += `&se=${downloadSeason}&ep=${downloadEpisode}`;
       }
 
       const playRes = await fetch(playUrl).then((r) => r.json());
@@ -1044,13 +1046,13 @@ function DetailView({ item, initialEpisode, onPlay, onBack, onOpen }: {
     }
 
     const ok = startDownload({
-      id: typeof item.id === "string" ? hashStr(item.id) : item.id,
+      id: String(item.id),
       type: item.type, title: item.title, poster: item.poster || "",
       quality: q.label, sizeMB: actualSizeMB, cost: q.cost,
       streamUrl,
     });
     if (ok) {
-      toast.success(`Download started: ${item.title} (${q.label})`, {
+      toast.success(`Download started: ${item.title}${item.type === "tv" ? ` S${downloadSeason}E${downloadEpisode}` : ""} (${q.label})`, {
         description: `-${q.cost} coins · ${actualSizeMB >= 1000 ? (actualSizeMB / 1000).toFixed(1) + " GB" : actualSizeMB + " MB"}`,
       });
     } else {
@@ -1131,7 +1133,7 @@ function DetailView({ item, initialEpisode, onPlay, onBack, onOpen }: {
               </button>
               <button
                 onClick={() => toggleWatchlist({
-                  id: typeof item.id === "string" ? hashStr(item.id) : item.id,
+                  id: String(item.id),
                   type: item.type, title: item.title, poster: item.poster || "",
                 })}
                 className={`inline-flex items-center gap-2 backdrop-blur border font-medium px-6 py-3 rounded-md transition ${
@@ -1181,6 +1183,10 @@ function DetailView({ item, initialEpisode, onPlay, onBack, onOpen }: {
                     </button>
                   ))}
                 </div>
+              ) : detailLoading ? (
+                <div className="flex items-center gap-2 text-sm text-white/40">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Loading seasons...
+                </div>
               ) : (
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-white/50">Season</span>
@@ -1228,6 +1234,45 @@ function DetailView({ item, initialEpisode, onPlay, onBack, onOpen }: {
           <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
             <DownloadIcon className="h-5 w-5 text-[#e50914]" /> Download
           </h2>
+
+          {/* Episode selector for TV shows */}
+          {mergedItem.type === "tv" && (
+            <div className="mb-4 p-4 rounded-lg bg-[#1a1a1d] border border-white/10">
+              <p className="text-sm text-white/60 mb-3">Select episode to download:</p>
+              <div className="flex items-center gap-3 mb-3">
+                <span className="text-sm text-white/50">Season</span>
+                {liveSeasons?.seasons?.length > 0 ? (
+                  <select
+                    value={downloadSeason}
+                    onChange={(e) => setDownloadSeason(Number(e.target.value))}
+                    className="bg-[#0d0d0f] border border-white/20 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:border-[#e50914]"
+                  >
+                    {liveSeasons.seasons.map((s: any) => (
+                      <option key={s.se} value={s.se} className="bg-[#0d0d0f]">
+                        Season {s.se} ({s.maxEp} eps)
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className="text-sm text-white/40">Loading...</span>
+                )}
+                <span className="text-sm text-white/50">Episode</span>
+                <select
+                  value={downloadEpisode}
+                  onChange={(e) => setDownloadEpisode(Number(e.target.value))}
+                  className="bg-[#0d0d0f] border border-white/20 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:border-[#e50914]"
+                >
+                  {episodes.map((ep) => (
+                    <option key={ep} value={ep} className="bg-[#0d0d0f]">Episode {ep}</option>
+                  ))}
+                </select>
+              </div>
+              <p className="text-xs text-white/40">
+                Downloading: S{downloadSeason}E{downloadEpisode}
+              </p>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {qualityOptions.map((q) => {
               const affordable = coins >= q.cost;
@@ -1392,11 +1437,18 @@ function WatchlistView({ onOpen }: { onOpen: (t: DisplayItem) => void; }) {
               key={w.id}
               item={{
                 id: w.id, type: w.type, title: w.title, rating: 0, genres: [],
-                overview: "", poster: w.poster, source: "catalog",
+                overview: "", poster: w.poster, source: typeof w.id === "string" && w.id.length > 5 ? "moviebox" : "catalog",
               }}
               onOpen={() => {
-                const t = CATALOG.find((c) => c.id === w.id);
+                const t = CATALOG.find((c) => String(c.id) === String(w.id));
                 if (t) onOpen(toDisplay(t));
+                else {
+                  // MovieBox item — open with source: "moviebox"
+                  onOpen({
+                    id: w.id, type: w.type, title: w.title, rating: 0, genres: [],
+                    overview: "", poster: w.poster, source: "moviebox",
+                  });
+                }
               }}
             />
           ))}
@@ -1432,10 +1484,12 @@ function HistoryView({ onOpen, onPlay }: { onOpen: (t: DisplayItem) => void; onP
       ) : (
         <div className="space-y-2">
           {history.map((h) => {
-            const t = CATALOG.find((c) => c.id === h.id);
+            // Check if this is a MovieBox item (ID is a long string, not a small number)
+            const isMovieBox = typeof h.id === "string" && h.id.length > 5;
+            const t = CATALOG.find((c) => String(c.id) === String(h.id));
             const item: DisplayItem = t ? toDisplay(t) : {
               id: h.id, type: h.type, title: h.title, rating: 0, genres: [],
-              overview: "", poster: h.poster, source: "catalog",
+              overview: "", poster: h.poster, source: isMovieBox ? "moviebox" : "catalog",
             };
             return (
               <div key={`${h.id}-${h.watchedAt}`} className="flex items-center gap-3 p-3 rounded-lg bg-[#1a1a1d] border border-white/10 hover:bg-white/5 transition">
