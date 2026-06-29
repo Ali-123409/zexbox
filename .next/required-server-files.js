@@ -5,6 +5,7 @@ self.__SERVER_FILES_MANIFEST={
     "cacheComponents": false,
     "htmlLimitedBots": "[\\w-]+-Google|Google-[\\w-]+|Chrome-Lighthouse|Slurp|DuckDuckBot|baiduspider|yandex|sogou|bitlybot|tumblr|vkShare|quora link preview|redditbot|ia_archiver|Bingbot|BingPreview|applebot|facebookexternalhit|facebookcatalog|Twitterbot|LinkedInBot|Slackbot|Discordbot|WhatsApp|SkypeUriPreview|Yeti|googleweblight",
     "assetPrefix": "",
+    "output": "standalone",
     "trailingSlash": false,
     "images": {
       "deviceSizes": [
@@ -96,7 +97,7 @@ self.__SERVER_FILES_MANIFEST={
     "poweredByHeader": true,
     "cacheHandlers": {},
     "cacheMaxMemorySize": 52428800,
-    "compress": false,
+    "compress": true,
     "i18n": null,
     "httpAgentOptions": {
       "keepAlive": true
@@ -136,7 +137,7 @@ self.__SERVER_FILES_MANIFEST={
       "imgOptSkipMetadata": null,
       "imgOptTimeoutInSeconds": 7,
       "proxyClientMaxBodySize": 10485760,
-      "trustHostHeader": true,
+      "trustHostHeader": false,
       "isExperimentalCompile": false
     }
   },
