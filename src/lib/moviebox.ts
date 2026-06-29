@@ -57,8 +57,12 @@ const H5_BASE_PATH = "/wefeed-h5api-bff";
 // === Public H5 endpoints (no auth, no signing) ===
 // optimizeImage() has been moved to src/lib/image.ts so it can be imported from client components
 export async function getHomeData(): Promise<any> {
+  const bypassIp = await getBypassIp();
   const res = await fetch(`${H5_HOST}${H5_BASE_PATH}/home?host=movie-box.co`, {
-    headers: { Accept: "application/json" },
+    headers: {
+      Accept: "application/json",
+      "X-Forwarded-For": bypassIp,
+    },
   });
   return res.json();
 }
