@@ -224,8 +224,8 @@ export default function Page() {
       }
     } catch { /* fall through to fallbacks */ }
 
-    // === Fallback: MovieBox direct (for moviebox/netmirror items) ===
-    if (item.source === "moviebox" || item.source === "netmirror" || item.movieboxSubjectId) {
+    // === Fallback: MovieBox direct (for moviebox/netmirror items, NOT hindidubanime) ===
+    if ((item.source === "moviebox" || item.source === "netmirror" || item.movieboxSubjectId) && item.source !== "hindidubanime") {
       try {
         const subjectId = item.movieboxSubjectId || String(item.id);
         const result = await fetchPlayDirect(subjectId, se, ep);
