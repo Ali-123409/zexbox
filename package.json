@@ -11,10 +11,8 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:reset": "prisma migrate reset",
-    "build:cloudflare": "npx opennextjs-cloudflare build",
-    "deploy:cloudflare": "npx opennextjs-cloudflare build && bunx wrangler deploy",
-    "preview:cloudflare": "npx opennextjs-cloudflare build && bunx wrangler dev",
-    "build:next": "next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/"
+    "build:next": "next build",
+    "build:pages": "npx @cloudflare/next-on-pages"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -86,6 +84,7 @@
     "zustand": "^5.0.6"
   },
   "devDependencies": {
+    "@cloudflare/next-on-pages": "^1.13.16",
     "@opennextjs/cloudflare": "^1.20.1",
     "@tailwindcss/postcss": "^4",
     "@types/react": "^19",

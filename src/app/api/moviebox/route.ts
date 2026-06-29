@@ -30,7 +30,7 @@ import {
   getBypassIp,
 } from "@/lib/device";
 
-export const runtime = "nodejs";
+export const runtime = "edge";
 export const dynamic = "force-dynamic";
 
 // === In-memory cache (5-min TTL) ===

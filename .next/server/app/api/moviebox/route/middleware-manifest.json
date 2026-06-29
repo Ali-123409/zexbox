@@ -1,0 +1,40 @@
+{
+  "sorted_middleware": [
+    "/api/moviebox/route"
+  ],
+  "middleware": {},
+  "instrumentation": null,
+  "functions": {
+    "/api/moviebox/route": {
+      "files": [
+        "server/middleware-build-manifest.js",
+        "server/interception-route-rewrite-manifest.js",
+        "required-server-files.js",
+        "server/server-reference-manifest.js",
+        "server/app/api/moviebox/route_client-reference-manifest.js",
+        "server/edge/chunks/_next-internal_server_app_api_moviebox_route_actions_28074616.js",
+        "server/edge/chunks/node_modules_next_dist_esm_9c68213c._.js",
+        "server/edge/chunks/[root-of-the-server]__322f5152._.js",
+        "server/edge/chunks/_9db46570._.js",
+        "server/edge/chunks/turbopack-node_modules_next_dist_esm_build_templates_edge-wrapper_aecc2d37.js"
+      ],
+      "name": "app/api/moviebox/route",
+      "page": "/api/moviebox/route",
+      "matchers": [
+        {
+          "regexp": "^/api/moviebox(?:/)?$",
+          "originalSource": "/api/moviebox"
+        }
+      ],
+      "wasm": [],
+      "assets": [],
+      "env": {
+        "__NEXT_BUILD_ID": "HduFkbPj0MSUJANW-0wby",
+        "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY": "wAWRhv3ds6amY/BiZQdOx5QgHJ/Ams3QscIsp/SbeTg=",
+        "__NEXT_PREVIEW_MODE_ID": "5d03a7b11d47e314a2efa2dc4e09f1aa",
+        "__NEXT_PREVIEW_MODE_ENCRYPTION_KEY": "41d463ea32212a4cb35872d761ce4233de6d1dde30ac19c61b7ca28a607cb69e",
+        "__NEXT_PREVIEW_MODE_SIGNING_KEY": "45b3d037180a9b04ef406b0e3d7184ab6e423d3644bf06b7b60a455ba4016e3e"
+      }
+    }
+  }
+}
