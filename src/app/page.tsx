@@ -37,6 +37,10 @@ import type { MovieItem } from "@/lib/h5api";
 import { fetchHomeDirect, fetchPlayDirect } from "@/lib/h5api";
 import { optimizeImage } from "@/lib/image";
 import { useMovieSearch, useDetail } from "@/lib/use-moviebox";
+import { useUnifiedSearch, useUnifiedHome } from "@/lib/sources/hooks";
+import { unifiedResolve } from "@/lib/sources";
+import type { UnifiedItem } from "@/lib/sources/types";
+import { buildFmoviesEmbed } from "@/lib/sources/fmovies";
 import Player from "@/components/zexbox/Player";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,7 +69,18 @@ interface DisplayItem {
   episodes?: number;
   country?: string;
   duration?: string;
-  source: "catalog" | "moviebox";
+  source: "catalog" | "moviebox" | "netmirror" | "fmovies" | "hindidubanime";
+  // For sources that map back to MovieBox (NetMirror returns a subjectid)
+  movieboxSubjectId?: string;
+  // For items that pre-resolve a stream URL (HindiDubAnime direct mp4)
+  embedUrl?: string;
+  streamUrl?: string;
+  // For Fmovies direct embed (imdb_id based)
+  imdbId?: string;
+  // For HindiDubAnime: episode list
+  episodeList?: { num: number; title: string; link: string }[];
+  // For tracking original source-specific data
+  language?: string;
 }
 
 function toDisplay(t: Title): DisplayItem {
@@ -84,6 +99,30 @@ function fromMovieBox(m: MovieItem): DisplayItem {
     poster: m.posterUrl, backdrop: m.coverUrl,
     runtime: m.durationSeconds ? Math.round(m.durationSeconds / 60) : undefined,
     country: m.country, duration: m.duration, source: "moviebox",
+  };
+}
+
+// Convert any UnifiedItem (from any source) to DisplayItem
+function fromUnified(u: UnifiedItem): DisplayItem {
+  return {
+    id: u.id,
+    type: u.type,
+    title: u.title,
+    year: u.year,
+    rating: u.rating,
+    genres: u.genres || [],
+    overview: u.overview,
+    poster: u.poster,
+    backdrop: u.backdrop,
+    runtime: u.runtime,
+    country: u.country,
+    duration: u.duration,
+    seasons: u.seasons,
+    source: u.source as any,
+    movieboxSubjectId: u.movieboxSubjectId,
+    embedUrl: u.embedUrl,
+    streamUrl: u.streamUrl,
+    language: u.language,
   };
 }
 
@@ -117,27 +156,85 @@ export default function Page() {
   const playTitleRef = useRef<(item: DisplayItem, episode?: string) => Promise<void>>(async () => {});
 
   const playTitle = useCallback(async (item: DisplayItem, episode?: string) => {
-    if (item.source === "moviebox") {
-      // Parse episode info if provided (e.g. "S1E3")
-      let se: number | undefined;
-      let ep: number | undefined;
-      if (episode) {
-        const m = episode.match(/S(\d+)E(\d+)/i);
-        if (m) {
-          se = Number(m[1]);
-          ep = Number(m[2]);
-        }
+    // Parse episode info if provided (e.g. "S1E3")
+    let se: number | undefined;
+    let ep: number | undefined;
+    if (episode) {
+      const m = episode.match(/S(\d+)E(\d+)/i);
+      if (m) {
+        se = Number(m[1]);
+        ep = Number(m[2]);
       }
+    }
+
+    // For TV shows that aren't from hindidubanime, default to S1E1 if no episode given
+    if (item.type === "tv" && !se && item.source !== "hindidubanime") {
+      se = 1; ep = 1;
+    }
+
+    // === Unified resolution path ===
+    // Try the unified resolver first — it knows how to handle all sources
+    // (moviebox, netmirror → moviebox, fmovies direct embed, hindidubanime iframe).
+    try {
+      const unifiedItem: UnifiedItem = {
+        id: String(item.id),
+        source: item.source as any,
+        type: item.type,
+        title: item.title,
+        year: item.year as any,
+        rating: item.rating,
+        genres: item.genres,
+        overview: item.overview,
+        poster: item.poster,
+        backdrop: item.backdrop,
+        movieboxSubjectId: item.movieboxSubjectId,
+        embedUrl: item.embedUrl,
+        streamUrl: item.streamUrl,
+      };
+
+      const result = await unifiedResolve(unifiedItem, se, ep);
+
+      // Build player state
+      const playerState: any = {
+        title: item.type === "tv" && episode ? `${item.title} - ${episode}` : item.title,
+        streamUrl: result.streamUrl,
+        embedUrl: result.embedUrl,
+        poster: item.backdrop || item.poster,
+      };
+
+      // TV navigation for sources that support it
+      if (item.type === "tv" && result.episodes?.length) {
+        playerState.currentEpisode = ep || 1;
+        playerState.maxEpisodes = result.episodes.length;
+        playerState.currentSeason = se || 1;
+        playerState.seasonTabs = [se || 1];
+        playerState.onEpisodeChange = (newEp: number) => {
+          playTitleRef.current(item, `S${se || 1}E${newEp}`);
+        };
+      }
+
+      if (playerState.streamUrl || playerState.embedUrl) {
+        setPlayer(playerState);
+        useStore.getState().addToHistory({
+          id: String(item.id),
+          type: item.type, title: item.title, poster: item.poster || "",
+          progress: 0, episode,
+        });
+        return;
+      }
+    } catch { /* fall through to fallbacks */ }
+
+    // === Fallback: MovieBox direct (for moviebox/netmirror items) ===
+    if (item.source === "moviebox" || item.source === "netmirror" || item.movieboxSubjectId) {
       try {
-        // Use the play endpoint (via our proxy with signed JWT)
-        const result = await fetchPlayDirect(String(item.id), se, ep);
+        const subjectId = item.movieboxSubjectId || String(item.id);
+        const result = await fetchPlayDirect(subjectId, se, ep);
         const allStreams = [
           ...(result.streams || []),
           ...(result.hls || []),
           ...(result.dash || []),
         ];
         if (allStreams.length > 0) {
-          // Pick best resolution (highest number)
           const best = allStreams.reduce((a: any, b: any) => {
             const aRes = Number(a.resolutions || a.resolution || 0);
             const bRes = Number(b.resolutions || b.resolution || 0);
@@ -145,7 +242,6 @@ export default function Page() {
           });
           const streamUrl = best.url || best.playUrl || best.streamUrl;
           if (streamUrl) {
-            // For TV shows, add navigation callbacks
             const isTv = item.type === "tv";
             const playerState: any = {
               title: isTv && episode ? `${item.title} - ${episode}` : item.title,
@@ -154,26 +250,20 @@ export default function Page() {
             };
 
             if (isTv) {
-              // Fetch season info to build navigation
               try {
-                const seasonsRes = await fetch(`/api/moviebox?action=seasons&subjectId=${item.id}`);
+                const seasonsRes = await fetch(`/api/moviebox?action=seasons&subjectId=${subjectId}`);
                 const seasonsData = await seasonsRes.json();
                 const seasons = seasonsData?.seasons?.seasons || [];
                 if (seasons.length > 0) {
                   const currentSe = se || seasons[0].se;
                   const seasonInfo = seasons.find((s: any) => s.se === currentSe) || seasons[0];
                   const maxEp = seasonInfo?.maxEp || 10;
-
                   playerState.seasonTabs = seasons.map((s: any) => s.se);
                   playerState.currentSeason = currentSe;
                   playerState.currentEpisode = ep || 1;
                   playerState.maxEpisodes = maxEp;
-                  playerState.onSeasonChange = (newSe: number) => {
-                    playTitleRef.current(item, `S${newSe}E1`);
-                  };
-                  playerState.onEpisodeChange = (newEp: number) => {
-                    playTitleRef.current(item, `S${currentSe}E${newEp}`);
-                  };
+                  playerState.onSeasonChange = (newSe: number) => playTitleRef.current(item, `S${newSe}E1`);
+                  playerState.onEpisodeChange = (newEp: number) => playTitleRef.current(item, `S${currentSe}E${newEp}`);
                 }
               } catch { /* navigation optional */ }
             }
@@ -188,21 +278,39 @@ export default function Page() {
           }
         }
       } catch { /* fall through to embed */ }
-      // Fallback: use multiembed title search
-      const q = encodeURIComponent(`${item.title} ${item.year || ""}`.trim());
-      setPlayer({ title: item.title, embedUrl: `https://multiembed.mov/?search=${q}`, poster: item.backdrop || item.poster });
-    } else {
-      // Static catalog items — use multiembed with TMDB ID
-      const isTv = item.type === "tv";
-      let embedUrl: string;
-      if (isTv && episode) {
-        const m = episode.match(/S(\d+)E(\d+)/i);
-        embedUrl = `https://multiembed.mov/?video_id=${item.id}&tmdb=1&s=${m ? m[1] : "1"}&e=${m ? m[2] : "1"}`;
-      } else {
-        embedUrl = `https://multiembed.mov/?video_id=${item.id}&tmdb=1`;
-      }
-      setPlayer({ title: isTv && episode ? `${item.title} - ${episode}` : item.title, embedUrl, poster: item.backdrop || item.poster });
     }
+
+    // === Fallback: Fmovies direct embed (if we have an imdb_id) ===
+    if (item.imdbId) {
+      const embedUrl = buildFmoviesEmbed(item.imdbId, item.type, se, ep);
+      setPlayer({
+        title: item.type === "tv" && episode ? `${item.title} - ${episode}` : item.title,
+        embedUrl,
+        poster: item.backdrop || item.poster,
+      });
+      useStore.getState().addToHistory({
+        id: String(item.id),
+        type: item.type, title: item.title, poster: item.poster || "",
+        progress: 0, episode,
+      });
+      return;
+    }
+
+    // === Final fallback: multiembed title search ===
+    const isTv = item.type === "tv";
+    let embedUrl: string;
+    if (isTv && episode) {
+      const m = episode.match(/S(\d+)E(\d+)/i);
+      embedUrl = `https://multiembed.mov/?video_id=${item.id}&tmdb=1&s=${m ? m[1] : "1"}&e=${m ? m[2] : "1"}`;
+    } else {
+      const q = encodeURIComponent(`${item.title} ${item.year || ""}`.trim());
+      embedUrl = `https://multiembed.mov/?search=${q}`;
+    }
+    setPlayer({
+      title: isTv && episode ? `${item.title} - ${episode}` : item.title,
+      embedUrl,
+      poster: item.backdrop || item.poster,
+    });
     useStore.getState().addToHistory({
       id: String(item.id),
       type: item.type, title: item.title, poster: item.poster || "",
@@ -414,6 +522,8 @@ function HomeView({ onOpen, onPlay }: { onOpen: (t: DisplayItem) => void; onPlay
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const history = useStore((s) => s.history);
+  // Use the unified home hook — pulls from MovieBox + HindiDubAnime in parallel
+  const { sections: unifiedSections, loading: unifiedLoading } = useUnifiedHome();
 
   useEffect(() => {
     let cancelled = false;
@@ -447,6 +557,30 @@ function HomeView({ onOpen, onPlay }: { onOpen: (t: DisplayItem) => void; onPlay
     return () => { cancelled = true; };
   }, []);
 
+  // Merge unified sections (which include HindiDubAnime "Hindi Dub Anime" section)
+  // with the MovieBox sections we fetched directly. Dedup by section title.
+  const allSections = useMemo(() => {
+    const merged: { title: string; type: string; items: DisplayItem[] }[] = [];
+    const seen = new Set<string>();
+    // MovieBox sections first
+    for (const s of sections) {
+      if (!seen.has(s.title)) {
+        merged.push(s);
+        seen.add(s.title);
+      }
+    }
+    // Then unified sections (HindiDubAnime etc.)
+    for (const s of unifiedSections) {
+      if (!seen.has(s.title)) {
+        merged.push({ title: s.title, type: "custom", items: s.items.map(fromUnified) });
+        seen.add(s.title);
+      }
+    }
+    return merged;
+  }, [sections, unifiedSections]);
+
+  const isLoading = loading || unifiedLoading;
+
   return (
     <div>
       {/* Hero Carousel — shows skeleton while loading, no banner text */}
@@ -467,13 +601,13 @@ function HomeView({ onOpen, onPlay }: { onOpen: (t: DisplayItem) => void; onPlay
           />
         )}
 
-        {/* Dynamic sections from MovieBox home API */}
-        {sections.map((s, i) => (
+        {/* Dynamic sections from MovieBox home API + HindiDubAnime */}
+        {allSections.map((s, i) => (
           <LazyRow key={`${s.title}-${i}`} title={s.title} items={s.items} onOpen={onOpen} />
         ))}
 
         {/* Loading skeleton rows */}
-        {loading && (
+        {isLoading && (
           <>
             <SkeletonRow />
             <SkeletonRow />
@@ -482,7 +616,7 @@ function HomeView({ onOpen, onPlay }: { onOpen: (t: DisplayItem) => void; onPlay
         )}
 
         {/* Fallback static catalog rows if no live data */}
-        {sections.length === 0 && !loading && (
+        {allSections.length === 0 && !isLoading && (
           <>
             <Row title="Trending Movies" icon={<Flame className="h-5 w-5 text-orange-400" />} items={CATALOG.filter(t => t.type === "movie").slice(0, 18).map(toDisplay)} onOpen={onOpen} />
             <Row title="Trending Shows" icon={<Tv className="h-5 w-5 text-blue-400" />} items={CATALOG.filter(t => t.type === "tv").slice(0, 18).map(toDisplay)} onOpen={onOpen} />
@@ -860,20 +994,26 @@ function CategoryView({ category, onOpen }: { category: "movie" | "tv"; onOpen: 
 function SearchView({ onOpen }: { onOpen: (t: DisplayItem) => void; }) {
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<"all" | "movie" | "tv">("all");
-  const { results: liveResults, loading: liveLoading } = useMovieSearch(q);
+  // Unified search — fires MovieBox + NetMirror + Fmovies + HindiDubAnime in parallel
+  const { results: unifiedResults, loading: unifiedLoading } = useUnifiedSearch(q);
+  // Keep MovieBox search as a supplement (it has different result shapes via the proxy)
+  const { results: mbResults, loading: mbLoading } = useMovieSearch(q);
   const localResults = useMemo(() => q.trim() ? searchCatalog(q).map(toDisplay) : [], [q]);
 
   const results = useMemo(() => {
-    const live = liveResults.map(fromMovieBox);
-    const merged = [...live, ...localResults];
+    const unified = unifiedResults.map(fromUnified);
+    const mb = mbResults.map(fromMovieBox);
+    const merged = [...unified, ...mb, ...localResults];
     const seen = new Set<string>();
     return merged.filter((r) => {
-      const key = r.title.toLowerCase();
+      const key = `${r.title.toLowerCase().trim()}|${r.year || ""}`;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
     }).filter((r) => filter === "all" ? true : r.type === filter);
-  }, [liveResults, localResults, filter]);
+  }, [unifiedResults, mbResults, localResults, filter]);
+
+  const loading = unifiedLoading || mbLoading;
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-6 space-y-6">
@@ -896,7 +1036,7 @@ function SearchView({ onOpen }: { onOpen: (t: DisplayItem) => void; }) {
               <X className="h-4 w-4" />
             </button>
           )}
-          {liveLoading && (
+          {loading && (
             <div className="absolute right-12 top-1/2 -translate-y-1/2">
               <Loader2 className="h-4 w-4 animate-spin text-[#e50914]" />
             </div>
@@ -928,7 +1068,7 @@ function SearchView({ onOpen }: { onOpen: (t: DisplayItem) => void; }) {
         </div>
       )}
 
-      {q && results.length === 0 && !liveLoading && (
+      {q && results.length === 0 && !loading && (
         <div className="text-center py-16 text-white/50">
           <SearchIcon className="h-12 w-12 mx-auto mb-3 opacity-30" />
           <p className="text-lg">No results found for "{q}"</p>

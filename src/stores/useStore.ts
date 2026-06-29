@@ -59,8 +59,8 @@ interface StoreState {
   // Downloads
   downloads: DownloadEntry[];
   startDownload: (entry: Omit<DownloadEntry, "downloadedAt" | "status" | "progress">) => boolean;
-  tickDownload: (id: number) => void;
-  removeDownload: (id: number) => void;
+  tickDownload: (id: number | string) => void;
+  removeDownload: (id: number | string) => void;
   clearDownloads: () => void;
 
   // Settings
@@ -163,7 +163,7 @@ export const useStore = create<StoreState>()(
               const reader = response.body?.getReader();
               if (!reader) throw new Error("No readable stream");
 
-              const chunks: Uint8Array[] = [];
+              const chunks: BlobPart[] = [];
               let receivedBytes = 0;
               const startTime = Date.now();
 

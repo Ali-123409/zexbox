@@ -1,2 +1,16 @@
 skills/
 node_modules/
+.next/
+.env
+.env.local
+.env.production
+*.log
+.DS_Store
+.vercel
+.turbo
+tool-results/
+pentest/captures/
+pentest/tools/
+upload/
+dev.log
+tsconfig.tsbuildinfo
