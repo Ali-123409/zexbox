@@ -57,19 +57,36 @@ async function fetchWithRetry(url: string, ms = 10000, retries = 3): Promise<{ o
 }
 
 function extractPoster(html: string): string | undefined {
-  // Pattern 1: data-src='https://cdn.myanimelist.net/images/anime/...'
-  let m = html.match(/data-src=['"](https?:\/\/cdn\.myanimelist\.net\/images\/anime\/[^'"]+)['"]/i);
+  // The HDA site uses multiple image CDNs and patterns. We try them in priority order.
+
+  // Pattern 1: og:image meta tag (most reliable when present)
+  let m = html.match(/<meta[^>]+property=['"]og:image['"][^>]+content=['"]([^'"]+)['"]/i);
   if (m) return m[1];
 
-  // Pattern 2: og:image meta tag
-  m = html.match(/<meta[^>]+property=['"]og:image['"][^>]+content=['"]([^'"]+)['"]/i);
+  // Pattern 2: data-src with anilist CDN (cover/large or banner)
+  m = html.match(/data-src=['"](https?:\/\/s\d+\.anilist\.co\/file\/anilistcdn\/media\/anime\/cover\/[^'"]+)['"]/i);
   if (m) return m[1];
 
-  // Pattern 3: any img with class containing 'thumb' or 'poster' or 'cover'
-  m = html.match(/<img[^>]*class=['"][^'"]*(?:thumb|poster|cover|featured)[^'"]*['"][^>]*?(?:data-src|src)=['"]([^'"]+)['"]/i);
+  // Pattern 3: data-src with cdn.myanimelist.net images/anime/
+  m = html.match(/data-src=['"](https?:\/\/cdn\.myanimelist\.net\/images\/anime\/[^'"]+)['"]/i);
   if (m) return m[1];
 
-  // Pattern 4: any cdn.myanimelist.net image with /anime/ in path (the poster)
+  // Pattern 4: wp-content/uploads with 'bx' prefix (anime cover uploads)
+  m = html.match(/data-src=['"](https?:\/\/hindidubanime\.com\/wp-content\/uploads\/[^'"]*bx\d+[^'"]*)['"]/i);
+  if (m) {
+    // Strip the resize suffix like -96x136 to get full image
+    let url = m[1].replace(/-\d+x\d+(\.[a-z]+)$/, "$1");
+    return url;
+  }
+
+  // Pattern 5: any data-src on img with class containing 'thumb'/'poster'/'cover'/'featured'
+  m = html.match(/<img[^>]*class=['"][^'"]*(?:thumb|poster|cover|featured)[^'"]*['"][^>]*?data-src=['"]([^'"]+)['"]/i);
+  if (m) return m[1];
+
+  // Pattern 6: any anilist/myanimelist image anywhere in HTML
+  m = html.match(/(https?:\/\/s\d+\.anilist\.co\/file\/anilistcdn\/media\/anime\/cover\/[^\s"'<>]+)/i);
+  if (m) return m[1];
+
   m = html.match(/(https?:\/\/cdn\.myanimelist\.net\/images\/anime\/[^\s"'<>]+)/i);
   if (m) return m[1];
 
