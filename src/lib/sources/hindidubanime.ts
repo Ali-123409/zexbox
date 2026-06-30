@@ -54,32 +54,20 @@ export const hindidubanime: SourceClient = {
   async search(keyword, page = 0) {
     if (!keyword.trim()) return [];
     
-    // For page 0, try local catalog search first (instant)
+    // For page 0, use ONLY the bundled catalog (instant, no network call)
+    // The catalog has 59 anime — covers most searches
     if (page === 0) {
       const kw = keyword.toLowerCase();
-      const localResults: UnifiedItem[] = [];
+      const results: UnifiedItem[] = [];
       for (const [slug, entry] of Object.entries(catalogData) as [string, any][]) {
         if (entry.title.toLowerCase().includes(kw)) {
-          localResults.push(catalogToUnified(slug, entry));
+          results.push(catalogToUnified(slug, entry));
         }
       }
-      // Also fetch from API for results not in our catalog
-      try {
-        const url = `/api/hda?action=search&keyword=${encodeURIComponent(keyword)}&page=0`;
-        const res = await fetch(url, { headers: { Accept: "application/json" } });
-        if (res.ok) {
-          const raw = await res.json();
-          const apiResults = (raw?.items || []) as UnifiedItem[];
-          // Merge: API results first, then local-only results
-          const apiSlugs = new Set(apiResults.map((r) => r.movieboxSubjectId));
-          const localOnly = localResults.filter((r) => !apiSlugs.has(r.movieboxSubjectId));
-          return [...apiResults, ...localOnly];
-        }
-      } catch {}
-      return localResults;
+      return results;
     }
     
-    // Page 1+ from API only
+    // Page 1+ from API (for load-more)
     try {
       const url = `/api/hda?action=search&keyword=${encodeURIComponent(keyword)}&page=${page}`;
       const res = await fetch(url, { headers: { Accept: "application/json" } });
