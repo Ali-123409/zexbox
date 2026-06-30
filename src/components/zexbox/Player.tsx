@@ -38,7 +38,9 @@ export default function Player({
 }: PlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [isEmbed, setIsEmbed] = useState(!!embedUrl);
+  // Prefer direct stream over embed — native <video> has no ads, iframe embeds do.
+  // Only fall back to embed if we have NO direct stream URL.
+  const [isEmbed, setIsEmbed] = useState(!streamUrl && !!embedUrl);
   const [error, setError] = useState(!embedUrl && !streamUrl ? "No stream URL available." : "");
   const [loading, setLoading] = useState(!embedUrl && !!streamUrl);
 
