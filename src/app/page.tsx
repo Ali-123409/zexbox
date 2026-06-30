@@ -214,6 +214,7 @@ export default function Page() {
       }
 
       if (playerState.streamUrl || playerState.embedUrl) {
+        console.log("[ZEXBOX DEBUG] Player state:", JSON.stringify({ streamUrl: playerState.streamUrl?.slice(0, 60), embedUrl: playerState.embedUrl?.slice(0, 60), hasStreams: !!playerState.streams, downloadUrl: playerState.downloadUrl?.slice(0, 60) }));
         setPlayer(playerState);
         useStore.getState().addToHistory({
           id: String(item.id),
