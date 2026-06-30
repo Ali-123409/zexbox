@@ -11,6 +11,7 @@
 import type { SourceClient, UnifiedItem } from "./types";
 import { https } from "./types";
 import catalogData from "../hda-catalog.json";
+import mbMapping from "../hda-mb-mapping.json";
 
 // Build UnifiedItem from bundled catalog entry
 function catalogToUnified(slug: string, entry: { id: string; title: string; language: string }): UnifiedItem {
@@ -115,16 +116,56 @@ export const hindidubanime: SourceClient = {
     if (targetLink) {
       try {
         const proxyUrl = `/api/hindidub?url=${encodeURIComponent(targetLink)}`;
-        // Use manual AbortController (AbortSignal.timeout may not be available in all browsers)
         const ctrl = new AbortController();
         const timeoutId = setTimeout(() => ctrl.abort(), 20000);
         const pres = await fetch(proxyUrl, { signal: ctrl.signal });
         clearTimeout(timeoutId);
         if (pres.ok) {
           const pdata = await pres.json();
+          
+          // If we got a direct HLS stream (as-cdn21.top), use it — ad-free!
+          if (pdata.streamUrl) {
+            return {
+              embedUrl: pdata.embedUrl,
+              streamUrl: pdata.streamUrl,
+              downloadUrl: pdata.downloadUrl,
+              videoTitle: pdata.videoTitle,
+              episodes,
+            };
+          }
+          
+          // No HLS → gdmirrorbot episode (MKV, can't play in browser)
+          // FALLBACK: Try MovieBox for the same anime (ad-free MP4 streams!)
+          const mbId = (mbMapping as Record<string, any>)[slug || ""]?.mb_id;
+          if (mbId) {
+            try {
+              const mbPlayRes = await fetch(`/api/moviebox?action=play&subjectId=${mbId}&se=1&ep=${epNum}`);
+              if (mbPlayRes.ok) {
+                const mbData = await mbPlayRes.json();
+                const mbStreams = (mbData.streams || []).map((s: any) => ({
+                  quality: String(s.resolutions || s.resolution || s.quality || "?"),
+                  url: s.url || s.playUrl || "",
+                  size: s.size ? Number(s.size) : undefined,
+                })).filter((s: any) => s.url).sort((a: any, b: any) => Number(a.quality) - Number(b.quality));
+                
+                if (mbStreams.length > 0) {
+                  // Pick best MP4 stream
+                  const mp4 = mbStreams.find((s: any) => s.url.endsWith(".mp4"));
+                  const streamUrl = mp4?.url || mbStreams[0].url;
+                  return {
+                    streamUrl,
+                    streams: mbStreams,
+                    downloadUrl: pdata.downloadUrl, // Keep HDA download link too
+                    episodes,
+                  };
+                }
+              }
+            } catch {}
+          }
+          
+          // MB fallback failed → use sandboxed iframe + download
           return {
             embedUrl: pdata.embedUrl,
-            streamUrl: pdata.streamUrl,
             downloadUrl: pdata.downloadUrl,
             videoTitle: pdata.videoTitle,
             episodes,
