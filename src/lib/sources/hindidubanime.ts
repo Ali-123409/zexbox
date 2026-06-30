@@ -112,42 +112,10 @@ export const hindidubanime: SourceClient = {
     // Step 2: Fetch the actual stream via our proxy
     if (targetLink) {
       try {
-        // Check localStorage cache first (30-min TTL)
-        const cacheKey = `hda:stream:v2:${targetLink}`;
-        if (typeof window !== "undefined") {
-          const cached = localStorage.getItem(cacheKey);
-          if (cached) {
-            const data = JSON.parse(cached);
-            if (Date.now() - data.timestamp < 30 * 60 * 1000) {
-              return {
-                embedUrl: data.embedUrl,
-                streamUrl: data.streamUrl,
-                downloadUrl: data.downloadUrl,
-                videoTitle: data.videoTitle,
-                episodes,
-              };
-            }
-          }
-        }
-
         const proxyUrl = `/api/hindidub?url=${encodeURIComponent(targetLink)}`;
         const pres = await fetch(proxyUrl, { signal: AbortSignal.timeout(20000) });
         if (pres.ok) {
           const pdata = await pres.json();
-          
-          // Cache the result in localStorage (30-min TTL)
-          if (typeof window !== "undefined" && (pdata.embedUrl || pdata.downloadUrl)) {
-            try {
-              localStorage.setItem(cacheKey, JSON.stringify({
-                embedUrl: pdata.embedUrl,
-                streamUrl: pdata.streamUrl,
-                downloadUrl: pdata.downloadUrl,
-                videoTitle: pdata.videoTitle,
-                timestamp: Date.now(),
-              }));
-            } catch {}
-          }
-          
           return {
             embedUrl: pdata.embedUrl,
             streamUrl: pdata.streamUrl,
