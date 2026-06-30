@@ -113,7 +113,11 @@ export const hindidubanime: SourceClient = {
     if (targetLink) {
       try {
         const proxyUrl = `/api/hindidub?url=${encodeURIComponent(targetLink)}`;
-        const pres = await fetch(proxyUrl, { signal: AbortSignal.timeout(20000) });
+        // Use manual AbortController (AbortSignal.timeout may not be available in all browsers)
+        const ctrl = new AbortController();
+        const timeoutId = setTimeout(() => ctrl.abort(), 20000);
+        const pres = await fetch(proxyUrl, { signal: ctrl.signal });
+        clearTimeout(timeoutId);
         if (pres.ok) {
           const pdata = await pres.json();
           return {
