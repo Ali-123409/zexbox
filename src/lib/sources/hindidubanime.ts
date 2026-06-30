@@ -57,10 +57,12 @@ export const hindidubanime: SourceClient = {
     // For page 0, use ONLY the bundled catalog (instant, no network call)
     // The catalog has 59 anime — covers most searches
     if (page === 0) {
-      const kw = keyword.toLowerCase();
+      const kw = keyword.toLowerCase().replace(/[^a-z0-9]/g, "");
       const results: UnifiedItem[] = [];
       for (const [slug, entry] of Object.entries(catalogData) as [string, any][]) {
-        if (entry.title.toLowerCase().includes(kw)) {
+        // Normalize title by removing non-alphanumeric chars for fuzzy matching
+        const normalizedTitle = entry.title.toLowerCase().replace(/[^a-z0-9]/g, "");
+        if (normalizedTitle.includes(kw)) {
           results.push(catalogToUnified(slug, entry));
         }
       }
