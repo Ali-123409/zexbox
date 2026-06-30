@@ -1448,7 +1448,7 @@ function DetailView({ item, initialEpisode, onPlay, onBack, onOpen }: {
       .then(data => {
         if (data?.episodes?.[0]?.link) {
           // Pre-fetch the FIRST episode's stream URL (most likely to be played)
-          const cacheKey = `hda:stream:${data.episodes[0].link}`;
+          const cacheKey = `hda:stream:v2:${data.episodes[0].link}`;
           if (typeof window !== "undefined" && !localStorage.getItem(cacheKey)) {
             fetch(`/api/hindidub?url=${encodeURIComponent(data.episodes[0].link)}`)
               .then(r => r.ok ? r.json() : null)

@@ -113,7 +113,7 @@ export const hindidubanime: SourceClient = {
     if (targetLink) {
       try {
         // Check localStorage cache first (30-min TTL)
-        const cacheKey = `hda:stream:${targetLink}`;
+        const cacheKey = `hda:stream:v2:${targetLink}`;
         if (typeof window !== "undefined") {
           const cached = localStorage.getItem(cacheKey);
           if (cached) {
