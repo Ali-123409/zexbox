@@ -1438,6 +1438,37 @@ function DetailView({ item, initialEpisode, onPlay, onBack, onOpen }: {
   const liveId = item.source === "moviebox" ? String(item.id) : null;
   const { detail: liveDetail, recs: liveRecs, seasons: liveSeasons, loading: detailLoading } = useDetail(liveId);
 
+  // Pre-fetch HDA episode list + cache stream URL when detail page opens
+  // This makes playback instant when user clicks "Watch Online"
+  useEffect(() => {
+    if (item.source !== "hindidubanime" || !item.movieboxSubjectId) return;
+    // Pre-fetch episode list in background
+    fetch(`/api/hda-episodes?slug=${encodeURIComponent(item.movieboxSubjectId)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.episodes?.[0]?.link) {
+          // Pre-fetch the FIRST episode's stream URL (most likely to be played)
+          const cacheKey = `hda:stream:${data.episodes[0].link}`;
+          if (typeof window !== "undefined" && !localStorage.getItem(cacheKey)) {
+            fetch(`/api/hindidub?url=${encodeURIComponent(data.episodes[0].link)}`)
+              .then(r => r.ok ? r.json() : null)
+              .then(streamData => {
+                if (streamData && typeof window !== "undefined") {
+                  try {
+                    localStorage.setItem(cacheKey, JSON.stringify({
+                      ...streamData,
+                      timestamp: Date.now(),
+                    }));
+                  } catch {}
+                }
+              })
+              .catch(() => {});
+          }
+        }
+      })
+      .catch(() => {});
+  }, [item.source, item.movieboxSubjectId]);
+
   const mergedItem: DisplayItem = useMemo(() => {
     if (!liveDetail) return item;
     const d = liveDetail;
