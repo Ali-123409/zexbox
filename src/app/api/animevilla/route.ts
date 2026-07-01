@@ -136,25 +136,41 @@ async function fetchWithRetry(
   return { ok: false, data: [], status: 0 };
 }
 
-// Extract hsalinks.in batch download URLs from an anime page
+// Extract hsalinks.in batch download URLs from an anime page.
+// HTML structure:
+//   <div class="download-section-item">
+//     <div class="download-section-item-res">S1 Episode 1-6 720p</div>
+//     <div class="download-section-item-data">
+//       <a class="download-section-item-link" href="https://hsalinks.in/...">HSA DD</a>
+//     </div>
+//   </div>
 function extractDownloadLinks(html: string) {
   const links: { quality: string; range: string; url: string }[] = [];
+  // Match the OUTER block div exactly (class="download-section-item" — not -res/-data/-link).
+  // Use word-boundary-ish check via the closing quote.
   const blockRegex =
-    /<a[^>]*href="(https:\/\/hsalinks\.in\/[^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
+    /<div[^>]*class="download-section-item"[^>]*>([\s\S]*?)<\/div>\s*<\/div>/gi;
+  // Inside each block: find the res text and the hsalinks URL
   const resRegex =
-    /<div[^>]*class="[^"]*download-section-item-res[^"]*"[^>]*>([^<]+)<\/div>/i;
-  const dataRegex =
-    /<div[^>]*class="[^"]*download-section-item-data[^"]*"[^>]*>([^<]+)<\/div>/i;
+    /<div[^>]*class="download-section-item-res"[^>]*>([\s\S]*?)<\/div>/i;
+  const urlRegex = /href="(https:\/\/hsalinks\.in\/[^"]+)"/i;
 
   let m: RegExpExecArray | null;
   while ((m = blockRegex.exec(html)) !== null) {
-    const url = m[1];
-    const inner = m[2];
+    const inner = m[1];
     const resMatch = resRegex.exec(inner);
-    const dataMatch = dataRegex.exec(inner);
-    const quality = resMatch ? stripTags(resMatch[1]).trim() : "?";
-    const range = dataMatch ? stripTags(dataMatch[1]).trim() : "";
-    if (url) links.push({ quality, range, url });
+    const urlMatch = urlRegex.exec(inner);
+    if (!urlMatch) continue; // skip blocks without a download link
+    const rawLabel = stripTags(resMatch ? resMatch[1] : "").trim();
+    // Parse label like "S1 Episode 1-6 720p" → range="S1 Episode 1-6", quality="720p"
+    let range = rawLabel;
+    let quality = "?";
+    const qMatch = rawLabel.match(/\b(\d{3,4}p)\b/i);
+    if (qMatch) {
+      quality = qMatch[1];
+      range = rawLabel.replace(qMatch[0], "").trim();
+    }
+    links.push({ quality, range, url: urlMatch[1] });
   }
   return links;
 }
