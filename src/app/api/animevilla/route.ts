@@ -210,14 +210,14 @@ export async function GET(req: NextRequest) {
   // === Browse / Search ===
   if (action === "browse" || action === "search") {
     let url: string;
+    // NOTE: _fields=_embedded does NOT actually embed featured media — omit _fields
+    // entirely so _embed=1 works and poster URLs are included.
     if (action === "search" && keyword.trim()) {
       url = `${WP}/anime?search=${encodeURIComponent(keyword)}&per_page=20&page=${
         page + 1
-      }&_embed=1&_fields=id,slug,link,title,excerpt,featured_media,_embedded`;
+      }&_embed=1`;
     } else {
-      url = `${WP}/anime?per_page=20&page=${
-        page + 1
-      }&_embed=1&_fields=id,slug,link,title,excerpt,featured_media,_embedded`;
+      url = `${WP}/anime?per_page=20&page=${page + 1}&_embed=1`;
     }
 
     const res = await fetchWithRetry(url, 15000, 3);
