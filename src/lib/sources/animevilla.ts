@@ -128,17 +128,21 @@ export const animevilla: SourceClient = {
     }
 
     // Step 2: Try MovieBox fallback for ad-free MP4 playback
-    // Search MovieBox for the cleaned title, then play
+    // Search MovieBox for the cleaned title, then play.
+    // HINDI AUDIO PREFERENCE: AnimeVilla items are Hindi-dubbed. When searching
+    // MovieBox, prefer matches that are also Hindi-dubbed (look for "Hindi" in
+    // title/language) so the user gets Hindi audio, not English.
     try {
-      const searchUrl = `/api/moviebox?action=search&keyword=${encodeURIComponent(item.title)}&size=5`;
+      // Search with broader size to find Hindi-dubbed variants
+      const searchUrl = `/api/moviebox?action=search&keyword=${encodeURIComponent(item.title)}&size=15`;
       const searchRes = await fetch(searchUrl, {
-        signal: AbortSignal.timeout(10000),
+        signal: AbortSignal.timeout(12000),
       });
       if (searchRes.ok) {
         const searchData = await searchRes.json();
         const mbItems = searchData.items || [];
 
-        // Find best match — prefer TV shows with similar title
+        // Find best match — prefer TV shows with similar title + Hindi audio
         const kw = item.title.toLowerCase().replace(/[^a-z0-9]/g, "");
         let bestMatch: any = null;
         let bestScore = 0;
@@ -155,6 +159,14 @@ export const animevilla: SourceClient = {
           if (mbTitle === kw) score += 100;
           // Bonus for being a TV show (animevilla is all TV)
           if (mb.type === "tv") score += 10;
+          // HINDI AUDIO BONUS: prefer Hindi-dubbed variants
+          const fullTitle = (mb.title || "").toLowerCase();
+          const lang = (mb.language || "").toLowerCase();
+          if (fullTitle.includes("hindi") || lang.includes("hindi")) {
+            score += 50;
+          }
+          // Penalty for clearly different titles (short prefix)
+          if (score < Math.min(kw.length, 4)) score = 0;
           if (score > bestScore) {
             bestScore = score;
             bestMatch = mb;
@@ -189,6 +201,9 @@ export const animevilla: SourceClient = {
                 episodes,
                 animeLink,
                 mbMatchTitle: bestMatch.title,
+                // Flag that this is a Hindi-audio match (for UI display)
+                hindiAudio: (bestMatch.title || "").toLowerCase().includes("hindi") ||
+                            (bestMatch.language || "").toLowerCase().includes("hindi"),
               };
             }
           }

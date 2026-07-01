@@ -1486,6 +1486,19 @@ function DetailView({ item, initialEpisode, onPlay, onBack, onOpen }: {
   const liveId = item.source === "moviebox" ? String(item.id) : null;
   const { detail: liveDetail, recs: liveRecs, seasons: liveSeasons, loading: detailLoading } = useDetail(liveId);
 
+  // === AnimeVilla: fetch batch download links (hsalinks.in) when detail opens ===
+  const [avDownloads, setAvDownloads] = useState<{ quality: string; range: string; url: string }[]>([]);
+  useEffect(() => {
+    if (item.source !== "animevilla" || !item.movieboxSubjectId) return;
+    setAvDownloads([]);
+    fetch(`/api/animevilla?action=episodes&slug=${encodeURIComponent(item.movieboxSubjectId)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.downloadLinks?.length) setAvDownloads(data.downloadLinks);
+      })
+      .catch(() => {});
+  }, [item.source, item.movieboxSubjectId]);
+
   // Pre-fetch HDA episode list + cache stream URL when detail page opens
   // This makes playback instant when user clicks "Watch Online"
   useEffect(() => {
@@ -1718,6 +1731,36 @@ function DetailView({ item, initialEpisode, onPlay, onBack, onOpen }: {
                 {inList ? "Added" : "Watchlist"}
               </button>
             </div>
+
+            {/* AnimeVilla batch download links (hsalinks.in) */}
+            {item.source === "animevilla" && avDownloads.length > 0 && (
+              <div className="mt-4 p-4 rounded-lg bg-emerald-950/30 border border-emerald-700/40">
+                <div className="flex items-center gap-2 mb-3">
+                  <DownloadIcon className="h-4 w-4 text-emerald-400" />
+                  <h3 className="text-sm font-semibold text-emerald-300">
+                    Batch Downloads (Hindi Dub)
+                  </h3>
+                  <span className="text-[10px] text-emerald-500/70 ml-auto">via hsalinks.in</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {avDownloads.map((dl, i) => (
+                    <a
+                      key={i}
+                      href={dl.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-between gap-2 px-3 py-2 rounded-md bg-emerald-900/40 hover:bg-emerald-800/60 border border-emerald-700/40 text-sm transition"
+                    >
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-white/90 font-medium truncate">{dl.range || "Batch"}</span>
+                        <span className="text-[10px] text-emerald-400/70">{dl.quality}</span>
+                      </div>
+                      <DownloadIcon className="h-4 w-4 text-emerald-400 shrink-0" />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {mergedItem.overview && (
               <p className="text-sm sm:text-base text-white/80 leading-relaxed pt-2">{mergedItem.overview}</p>

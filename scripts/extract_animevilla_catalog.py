@@ -64,7 +64,9 @@ def main():
     page = 1
     total_pages = 3  # we know it's 3 pages of 100
     while page <= total_pages:
-        url = f"{BASE}?per_page=100&page={page}&_embed=1&_fields=id,slug,link,title,excerpt,content,featured_media,_embedded,date"
+        # NOTE: _fields=_embedded does NOT actually embed featured media — we must omit
+        # _fields entirely so _embed=1 works and poster URLs are included.
+        url = f"{BASE}?per_page=100&page={page}&_embed=1"
         print(f"Fetching page {page}/{total_pages}...", file=sys.stderr)
         data, headers = fetch(url)
         if not data:

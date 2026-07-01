@@ -41,10 +41,24 @@ export function useUnifiedSearch(keyword: string) {
     }
 
     try {
-      const items = await safeAll(source.search(q, page), 12000);
-      if (items.length === 0) {
+      // Increased timeout: HDA/AV can take 8-10s on slow connections.
+      // Previous 12s was too tight — now 20s gives slow sources time to complete.
+      const items = await safeAll(source.search(q, page), 20000);
+
+      // === Relevance filtering ===
+      // Some sources (HDA via WP REST, MB) do full-text search and return
+      // irrelevant matches. Filter to keep only items whose title contains
+      // the query (token-by-token, all tokens must match).
+      const kwTokens = q.toLowerCase().trim().split(/\s+/).filter((t) => t.length >= 2);
+      const filtered = items.filter((item) => {
+        if (!item.title) return false;
+        const titleLower = item.title.toLowerCase();
+        // All query tokens must appear in the title (order-independent)
+        return kwTokens.every((tok) => titleLower.includes(tok));
+      });
+
+      if (filtered.length === 0) {
         if (page === 0) setSourceStatus((prev) => ({ ...prev, [sourceId]: "empty" }));
-        // No items = this source has no more pages
         sourceHasMoreRef.current[sourceId] = false;
         return 0;
       }
@@ -52,8 +66,14 @@ export function useUnifiedSearch(keyword: string) {
       // Merge and count how many were actually new
       let newCount = 0;
       setResults((prev) => {
-        const seen = new Set(prev.map((r) => `${r.title.toLowerCase().trim()}|${r.year || ""}|${r.type}`));
-        const fresh = items.filter((r) => !seen.has(`${r.title.toLowerCase().trim()}|${r.year || ""}|${r.type}`));
+        // Dedup by normalized title only (year is often missing → false dedup before)
+        const seen = new Set(prev.map((r) => r.title.toLowerCase().trim().replace(/[^a-z0-9]/g, "")));
+        const fresh = filtered.filter((r) => {
+          const key = r.title.toLowerCase().trim().replace(/[^a-z0-9]/g, "");
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
         newCount = fresh.length;
         return [...prev, ...fresh];
       });
@@ -61,11 +81,9 @@ export function useUnifiedSearch(keyword: string) {
       if (page === 0) setSourceStatus((prev) => ({ ...prev, [sourceId]: "done" }));
 
       // If we got items but ALL were dupes, this source doesn't support pagination
-      // (e.g., MovieBox returns the same results for every page).
-      // Set hasMore = false so we don't waste requests on identical pages.
       if (page > 0 && newCount === 0) {
         sourceHasMoreRef.current[sourceId] = false;
-      } else if (items.length < 8) {
+      } else if (filtered.length < 8) {
         // Few results = likely last page
         sourceHasMoreRef.current[sourceId] = false;
       } else {
