@@ -163,3 +163,26 @@ Work Log:
 
 Stage Summary:
 - Pending: git commit + push, then Vercel auto-deploy
+
+---
+Task ID: animevilla
+Agent: main
+Task: Probe animevilla.org as 5th Hindi anime source
+
+Work Log:
+- Found animevilla.org via hindidubbedanime.com link
+- 292 anime (5x more than HDA's 59)
+- Same Kiranime Pro theme v3.5.37, same 44 kiranime API routes
+- Same pentest vulnerabilities (nonce, migration dump, open registration)
+- Different player: avs.rpmvip.com (React + Vidstack, not as-cdn21.top)
+- rpmvip.com API: /api/v1/info, /api/v1/video, /api/v1/player, /api/v1/download
+- Video data is AES-CBC encrypted, key derived from hostname via obfuscated JS (864KB)
+- No X-Frame-Options → can be embedded in sandboxed iframe
+- Token not cracked yet (key derivation too obfuscated for static analysis)
+- Iframe embedding confirmed working
+
+Stage Summary:
+- animevilla.org catalog accessible via kiranime API (292 anime)
+- Playback via sandboxed iframe (ads blocked by sandbox)
+- MB fallback applies to overlapping titles
+- Direct stream extraction needs further JS deobfuscation
