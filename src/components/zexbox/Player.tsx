@@ -278,6 +278,10 @@ export default function Player({
             <iframe
               src={embedUrl}
               title={title}
+              // sandbox: allow-scripts + allow-same-origin so the player JS runs,
+              // but block popups/top-navigation so ad networks can't redirect the user.
+              // This is the same trick used for HDA iframe fallbacks.
+              sandbox="allow-scripts allow-same-origin allow-presentation"
               allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
               allowFullScreen
               referrerPolicy="origin"

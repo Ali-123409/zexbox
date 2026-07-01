@@ -18,9 +18,16 @@ import { moviebox } from "./moviebox";
 import { netmirror } from "./netmirror";
 import { fmovies } from "./fmovies";
 import { hindidubanime } from "./hindidubanime";
+import { animevilla } from "./animevilla";
 import { fetchHomeDirect } from "../h5api";
 
-export const SOURCES: SourceClient[] = [moviebox, netmirror, fmovies, hindidubanime];
+export const SOURCES: SourceClient[] = [
+  moviebox,
+  netmirror,
+  fmovies,
+  hindidubanime,
+  animevilla,
+];
 
 /**
  * Unified search — fires all sources in parallel, merges results.
@@ -85,9 +92,20 @@ export async function unifiedResolve(
     } catch {}
   }
 
+  // Strategy 2b: AnimeVilla items — use the animevilla-specific resolver
+  // (does its own MB fallback internally + returns download links)
+  if (item.source === "animevilla") {
+    try {
+      const result: ResolveResult = await animevilla.resolve(item, season, episode) as ResolveResult;
+      if (result.streamUrl || result.streams?.length || result.episodes?.length || (result as any).downloadLinks?.length) {
+        return result;
+      }
+    } catch {}
+  }
+
   // Strategy 3: Items with a real MovieBox subjectid (e.g. NetMirror pre-resolved) — use MovieBox resolver
-  // Skip this for HDA items since their movieboxSubjectId is actually a slug, not a subjectid.
-  if (item.movieboxSubjectId && item.source !== "hindidubanime") {
+  // Skip this for HDA/AnimeVilla items since their movieboxSubjectId is a slug, not a subjectid.
+  if (item.movieboxSubjectId && item.source !== "hindidubanime" && item.source !== "animevilla") {
     const mbItem: UnifiedItem = { ...item, id: item.movieboxSubjectId, source: "moviebox" };
     try {
       const mbResult: ResolveResult = await moviebox.resolve(mbItem, season, episode) as ResolveResult;
@@ -122,7 +140,7 @@ export async function unifiedResolve(
 
 /**
  * Get home content — used for the landing page when no search is active.
- * Returns MovieBox home (richest) + HindiDubAnime browse (anime section).
+ * Returns MovieBox home (richest) + HindiDubAnime + AnimeVilla (anime section).
  * Each source has its own timeout so a slow source doesn't block the others.
  */
 export async function getUnifiedHome(): Promise<{
@@ -130,11 +148,11 @@ export async function getUnifiedHome(): Promise<{
 }> {
   try {
     // Fetch MovieBox home directly (fast — 1-2s)
-    // HindiDubAnime is fetched with a strict timeout (it can be slow/unreachable
-    // from this server's location).
-    const [home, anime] = await Promise.all([
+    // HindiDubAnime + AnimeVilla fetched in parallel with strict timeouts
+    const [home, hdaAnime, avAnime] = await Promise.all([
       fetchHomeDirectSafe(8000),
       safeAll(hindidubanime.browse!(1), 6000),
+      safeAll(animevilla.browse!(1), 6000),
     ]);
 
     const sections: { title: string; items: UnifiedItem[] }[] = [];
@@ -162,9 +180,11 @@ export async function getUnifiedHome(): Promise<{
       }
     }
 
-    // Append anime section (only if it returned items)
-    if (anime.length) {
-      sections.push({ title: "Hindi Dub Anime", items: anime });
+    // Merge HDA + AnimeVilla into a single "Hindi Dub Anime" section,
+    // deduping by title so the same anime doesn't appear twice.
+    const mergedAnime = dedupeItems([...hdaAnime, ...avAnime]).slice(0, 20);
+    if (mergedAnime.length) {
+      sections.push({ title: "Hindi Dub Anime", items: mergedAnime });
     }
 
     return { sections };
@@ -185,5 +205,5 @@ async function fetchHomeDirectSafe(ms = 8000) {
 }
 
 // Re-exports for convenience
-export { moviebox, netmirror, fmovies, hindidubanime };
+export { moviebox, netmirror, fmovies, hindidubanime, animevilla };
 export type { UnifiedItem, SourceId } from "./types";

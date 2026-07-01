@@ -6,7 +6,12 @@
  * tag so the player knows how to play it.
  */
 
-export type SourceId = "moviebox" | "netmirror" | "fmovies" | "hindidubanime";
+export type SourceId =
+  | "moviebox"
+  | "netmirror"
+  | "fmovies"
+  | "hindidubanime"
+  | "animevilla";
 
 export interface UnifiedItem {
   id: string;            // unique within source

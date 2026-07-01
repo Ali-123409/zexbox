@@ -69,7 +69,7 @@ interface DisplayItem {
   episodes?: number;
   country?: string;
   duration?: string;
-  source: "catalog" | "moviebox" | "netmirror" | "fmovies" | "hindidubanime";
+  source: "catalog" | "moviebox" | "netmirror" | "fmovies" | "hindidubanime" | "animevilla";
   // For sources that map back to MovieBox (NetMirror returns a subjectid)
   movieboxSubjectId?: string;
   // For items that pre-resolve a stream URL (HindiDubAnime direct mp4)
@@ -167,8 +167,8 @@ export default function Page() {
       }
     }
 
-    // For TV shows that aren't from hindidubanime, default to S1E1 if no episode given
-    if (item.type === "tv" && !se && item.source !== "hindidubanime") {
+    // For TV shows that aren't from hindidubanime/animevilla, default to S1E1 if no episode given
+    if (item.type === "tv" && !se && item.source !== "hindidubanime" && item.source !== "animevilla") {
       se = 1; ep = 1;
     }
 
@@ -223,10 +223,36 @@ export default function Page() {
         });
         return;
       }
+
+      // AnimeVilla fallback: if MB didn't match, embed the animevilla anime page in a sandboxed iframe
+      // (ads blocked by sandbox, user gets download links + maybe an embedded player)
+      if (item.source === "animevilla" && (result as any).animeLink) {
+        const playerState2: any = {
+          title: item.type === "tv" && episode ? `${item.title} - ${episode}` : item.title,
+          embedUrl: (result as any).animeLink,
+          poster: item.backdrop || item.poster,
+        };
+        if (item.type === "tv" && result.episodes?.length) {
+          playerState2.currentEpisode = ep || 1;
+          playerState2.maxEpisodes = result.episodes.length;
+          playerState2.currentSeason = se || 1;
+          playerState2.seasonTabs = [se || 1];
+          playerState2.onEpisodeChange = (newEp: number) => {
+            playTitleRef.current(item, `S${se || 1}E${newEp}`);
+          };
+        }
+        setPlayer(playerState2);
+        useStore.getState().addToHistory({
+          id: String(item.id),
+          type: item.type, title: item.title, poster: item.poster || "",
+          progress: 0, episode,
+        });
+        return;
+      }
     } catch { /* fall through to fallbacks */ }
 
-    // === Fallback: MovieBox direct (for moviebox/netmirror items, NOT hindidubanime) ===
-    if ((item.source === "moviebox" || item.source === "netmirror" || item.movieboxSubjectId) && item.source !== "hindidubanime") {
+    // === Fallback: MovieBox direct (for moviebox/netmirror items, NOT hindidubanime/animevilla) ===
+    if ((item.source === "moviebox" || item.source === "netmirror" || item.movieboxSubjectId) && item.source !== "hindidubanime" && item.source !== "animevilla") {
       try {
         const subjectId = item.movieboxSubjectId || String(item.id);
         const result = await fetchPlayDirect(subjectId, se, ep);

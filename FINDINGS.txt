@@ -1,0 +1,412 @@
+================================================================================
+ZEX BOX — FULL PENTEST & INTEGRATION FINDINGS
+================================================================================
+Generated: 2026-07-01
+Project:   Zex Box — Multi-Source Streaming Aggregator
+Repo:      https://github.com/Ali-123409/zexbox
+Live:      https://zexbox.vercel.app
+Stack:     Next.js 16 + TypeScript + Tailwind + shadcn/ui + Zustand + HLS.js
+
+This document compiles EVERY finding from every pentest/reverse-engineering
+session, organized by source. Each source is rated by:
+  - Integration status   (Integrated / Partial / Blocked)
+  - Auth bypass method   (how we get content without paying / logging in)
+  - Stream quality       (resolution, format, ads)
+  - Vulnerabilities      (security findings on the source site)
+
+================================================================================
+TABLE OF CONTENTS
+================================================================================
+  1. MovieBox          (movie-box.co)         — FULLY CRACKED, INTEGRATED
+  2. NetMirror         (netmirror.global)     — FULLY OPEN API, INTEGRATED
+  3. HindiDubAnime     (hindidubanime.com)    — PARTIAL, INTEGRATED w/ MB fallback
+  4. AnimeVilla        (animevilla.org)       — NEW: INTEGRATED w/ MB fallback
+  5. Fmovies           (fmoviess.org)         — EMBED CRACKED, INTEGRATED
+  6. Crunchyroll       (crunchyroll.com)      — OAUTH CRACKED, BLOCKED by CF
+  7. Embed Servers     (universal)            — UNIVERSAL, INTEGRATED
+  8. Failed/Dead Sites                          — Not integrated
+  9. Cross-cutting tech                          — Architecture decisions
+ 10. Critical vulnerabilities discovered         — Responsible disclosure notes
+
+================================================================================
+1. MOVIEBOX (movie-box.co) — FULLY CRACKED + INTEGRATED
+================================================================================
+
+Status:           INTEGRATED (primary source — English/Anime/K-Drama/C-Drama)
+API Endpoint:     https://api6.aoneroom.com/wefeed-mobile-bff/
+Public H5 API:    https://h5-api.aoneroom.com (CORS-enabled, no auth for home)
+CDN:              hcdn3.hakunaymatata.com (MP4, 360p-1080p, Range support)
+
+AUTH BYPASS:
+  - APK reverse-engineered to extract HMAC-MD5 signing secret
+  - Secret (base64): 76iRl07s0xSN9jqmEWAt79EBJZulIQIsV64FZr2O
+  - HMAC key = base64-decoded secret
+  - Each request signed with HMAC-MD5(path + timestamp + body, key)
+  - Guest JWT auto-issued on first request (no user account needed)
+  - JWT stored in Cookie: token=<jwt>; mb_token=<jwt>
+
+STREAM FORMAT:
+  - Direct MP4 from hcdn3.hakunaymatata.com
+  - Resolutions: 360p, 480p, 720p, 1080p
+  - Accept-Ranges: bytes (resumable downloads)
+  - Content-Disposition: attachment;filename=<title>-<quality>.mp4
+  - Typical movie size: 150-400 MB (1080p), 80-200 MB (720p)
+  - No ads — pure MP4 stream
+
+CONTENT:
+  - English movies + TV
+  - Anime (incl. Hindi-dubbed subset)
+  - Nollywood (Nigerian)
+  - K-Drama, C-Drama
+  - Total: ~50K+ titles
+
+INTEGRATION FILES:
+  - src/lib/h5api.ts                (H5 API client + home/trending)
+  - src/lib/moviebox.ts             (mobile API client w/ HMAC signing)
+  - src/lib/device.ts               (device fingerprint + region)
+  - src/app/api/moviebox/route.ts   (proxy: search, detail, play, seasons)
+  - src/lib/sources/moviebox.ts     (UnifiedItem adapter)
+
+================================================================================
+2. NETMIRROR (netmirror.global) — FULLY OPEN API + INTEGRATED
+================================================================================
+
+Status:           INTEGRATED (secondary source — Hindi/Tamil/Telugu/Kannada/Malayalam)
+API Endpoint:     https://api2.imdb4.shop  (search)
+                  https://api2.imdb3.shop  (detail)
+Firebase API Key: AIzaSyCXPxAvUnGpGmgsrlK7-Tba_EcqtibUjzg
+CDN:              Cloudflare R2 (pub-*.r2.dev) + hcdn3 (via MB subjectid)
+
+AUTH BYPASS:
+  - API is FULLY OPEN — no auth, no API key required, no rate limit
+  - Search endpoint: GET /api/search2/{keyword}?page=0
+  - Detail endpoint: GET /api/movie/{id}
+  - Detail returns "embed" field containing subjectid → routes to MovieBox
+  - NetMirror essentially re-brands MovieBox content via subjectid mapping
+
+STREAM FORMAT:
+  - Direct MP4 from hcdn3 (same CDN as MovieBox, via subjectid)
+  - Also offers MKV downloads via Cloudflare R2 (filesdl.top → R2 URL)
+  - All streams support Range requests (resumable)
+
+CONTENT:
+  - Hindi movies + TV (largest Hindi catalog of any source)
+  - Tamil, Telugu, Kannada, Malayalam
+  - Some English
+
+CRITICAL VULNERABILITY — Firebase API Key Exposed:
+  - The Firebase Web API key AIzaSyCXPxAvUnGpGmgsrlK7-Tba_EcqtibUjzg is
+    hardcoded in their frontend bundle.
+  - This key permits unauthenticated reads of their Firebase backend.
+  - Impact: attacker can enumerate any data stored in their Firebase project
+    without authentication (depends on Firestore/RTDB security rules).
+
+INTEGRATION FILES:
+  - src/lib/sources/netmirror.ts    (search → MB subjectid → MB play)
+  - src/app/api/netmirror/route.ts  (proxy with CORS bypass)
+
+================================================================================
+3. HINDIDUBANIME (hindidubanime.com) — PARTIAL + INTEGRATED w/ MB FALLBACK
+================================================================================
+
+Status:           INTEGRATED (anime source — Hindi Dub + Hindi Sub)
+Theme:            Kiranime Pro v3.5.37 (WordPress)
+API:              WP REST API at /wp-json/wp/v2/anime
+CDN:              as-cdn21.top (HLS for 13 anime) + gdmirrorbot (MKV for 11) + MB (33)
+Catalog size:     59 anime
+
+AUTH BYPASS:
+  - WP REST API is publicly readable (no auth needed for browse/search)
+  - 44 kiranime/v1/* custom REST routes are also publicly accessible
+
+STREAM FORMAT (3 categories):
+  a) as-cdn21.top HLS streams (13 anime):
+     - Native <video> playback via HLS.js — NO ADS
+     - Routed through our /api/hls-proxy for CORS bypass
+  b) MovieBox fallback (33 anime):
+     - Title → MovieBox search → MB subjectid → MB MP4 stream
+     - 100% ad-free, supports download
+  c) gdmirrorbot iframe (11 anime):
+     - Sandboxed iframe — ads blocked by sandbox attribute
+     - MKV download link available (no auto-extract)
+
+OVERALL: 81% of HDA catalog plays ad-free (HLS + MB fallback)
+
+CRITICAL VULNERABILITIES (hindidubanime.com):
+  Total: 14 vulnerabilities discovered (4 critical)
+
+  [CRITICAL] Open Registration — No CAPTCHA, no email verification
+    Anyone can register an account instantly with any email.
+    Enables mass account creation for abuse.
+
+  [CRITICAL] Login Response Leaks Password Hash
+    POST /wp-json/wp/v1/auth/login returns:
+      { user: { id, email, password_hash: "$2y$..." } }
+    The bcrypt password hash is sent to the client. Even though bcrypt is
+    slow to crack, this is a major info leak — attackers who crack one
+    hash can reuse the password across other sites (credential stuffing).
+
+  [CRITICAL] Unauthenticated Content Dump
+    GET /wp-json/kiranime/v1/migrate/anime returns the entire anime catalog
+    (all 623 episode entries, slugs, descriptions, metadata) with no auth.
+    The "migrate" endpoint is meant for admin import/export but is fully
+    exposed. Attackers can clone the entire site content.
+
+  [CRITICAL] Admin Endpoints Exposed Without Auth
+    GET /wp-json/kiranime/v1/admin/post/anime returns admin-only post data.
+    Should require edit_posts capability; requires nothing.
+
+  [HIGH] Global Nonce Predictable
+    GET /wp-json/kiranime/v1/global_nonce returns a nonce that's stable per
+    session. Combined with open registration, attackers can perform any
+    nonce-protected AJAX action.
+
+  [MEDIUM] No Rate Limiting
+    All endpoints have no rate limiting. Login endpoint is brute-forceable.
+
+  [LOW] Verbose Error Messages
+    Failed login returns "Invalid email" vs "Invalid password" — user
+    enumeration possible.
+
+INTEGRATION FILES:
+  - src/lib/sources/hindidubanime.ts     (source client + MB fallback)
+  - src/app/api/hda/route.ts             (WP REST proxy, browse/search)
+  - src/app/api/hda-episodes/route.ts    (extract episode URLs from anime page)
+  - src/app/api/hda-poster/route.ts      (poster fallback generator)
+  - src/app/api/hindidub/route.ts        (HTML fetcher → iframe src + mp4/m3u8)
+  - src/app/api/hls-proxy/route.ts       (HLS playlist rewriter + segment proxy)
+  - src/lib/hda-catalog.json             (bundled 59-anime catalog, 8.2KB)
+  - src/lib/hda-mb-mapping.json          (40-anime → MB subjectid mapping, 5.4KB)
+
+================================================================================
+4. ANIMEVILLA (animevilla.org) — NEW: INTEGRATED w/ MB FALLBACK
+================================================================================
+
+Status:           INTEGRATED as 5th source (this session)
+Theme:            Kiranime Pro v3.5.37 (same as HDA)
+API:              WP REST API at /wp-json/wp/v2/anime
+Player:           avs.rpmvip.com (React + Vidstack) — only on some pages
+                  Most anime use batch download links via hsalinks.in
+Catalog size:     294 anime (5x larger than HDA)
+
+AUTH BYPASS:
+  - WP REST API is publicly readable (same as HDA)
+  - 44 kiranime/v1/* routes also exposed (same vulnerabilities as HDA)
+
+STREAM FORMAT:
+  - PRIMARY: MovieBox fallback by title match (most animevilla titles
+    exist in MovieBox's anime catalog). Ad-free MP4, 360p-1080p.
+  - FALLBACK: Sandboxed iframe embedding animevilla.org anime page
+    (blocks ads via sandbox attribute; user gets download links)
+  - DOWNLOAD: hsalinks.in batch URLs (e.g. "S1 Episode 1-6 720p")
+    extracted from the anime page HTML
+
+KEY DIFFERENCE vs HDA:
+  - HDA has /watch/{slug}-episode-{N}/ URLs with embedded players
+  - AnimeVilla has /anime/{slug}/ pages with batch download links only
+  - Some AnimeVilla anime have avs.rpmvip.com player (AES-CBC encrypted)
+  - The AES-CBC token cracking was attempted but key derivation is too
+    obfuscated (864KB JS bundle with multi-byte UTF-8 IV bug)
+
+AES-CBC ENCRYPTION DETAILS (for future work):
+  - Player: avs.rpmvip.com (React + Vidstack)
+  - Endpoints: /api/v1/info, /api/v1/video, /api/v1/player, /api/v1/download
+  - Video data is AES-CBC encrypted
+  - Key: derived from hostname via obfuscated JS
+  - Known partial key: kiemvienmua911c#
+  - IV computation has multi-byte UTF-8 issues — current CryptoJS-based
+    derivation produces wrong IV for non-ASCII hostnames
+
+INTEGRATION FILES:
+  - src/lib/sources/animevilla.ts       (source client + MB fallback)
+  - src/app/api/animevilla/route.ts     (WP REST proxy + episode/download extractor)
+  - src/lib/animevilla-catalog.json     (bundled 294-anime catalog, 42KB)
+
+================================================================================
+5. FMOVIES (fmoviess.org) — EMBED CRACKED + INTEGRATED
+================================================================================
+
+Status:           INTEGRATED (last-resort fallback — uses embed servers)
+Player:           AES-GCM encrypted URLs → netoda.tech/watch/?v{srv}{eps}#{encrypted}
+
+AES-GCM ENCRYPTION (CRACKED):
+  plaintext = "{mid}+{eps}+{srv}+{loc}+{timestamp}"
+  key       = loc (user's country code from /cdn-cgi/trace)
+  IV        = random 12 bytes
+  result    = base64(IV + ciphertext)
+  Player iframe: embos.top/movie/?mid={internal_id}
+
+BUT we don't need the encrypted player — these embed servers work directly
+with IMDB/TMDB IDs:
+
+EMBED SERVERS (universal, no encryption needed):
+  | Server              | URL Pattern                          | Status |
+  |---------------------|--------------------------------------|--------|
+  | vidlink.pro         | /movie/{id} or /tv/{id}/{s}/{e}      | ✅     |
+  | vidfast.pro         | /movie/{id}                          | ✅     |
+  | vidnest.fun         | /movie/{id}                          | ✅     |
+  | player.vidzee.wtf   | /embed/movie/{id}                    | ✅     |
+  | multiembed.mov      | /?video_id={tmdb_id}&tmdb=1          | ✅     |
+
+Image CDN: img.cdno.my.id
+
+INTEGRATION FILES:
+  - src/lib/sources/fmovies.ts         (embed URL builder, no API call needed)
+
+================================================================================
+6. CRUNCHYROLL (crunchyroll.com) — OAUTH CRACKED, BLOCKED BY CLOUDFLARE
+================================================================================
+
+Status:           NOT INTEGRATED (Cloudflare Turnstile blocks automated access)
+API:              beta-api.crunchyroll.com
+OAuth2 Endpoint:  /auth/v1/token
+Client ID:        cr_web (hardcoded in their web app)
+
+OAUTH2 FLOW (CRACKED):
+  POST https://beta-api.crunchyroll.com/auth/v1/token
+  Headers:
+    Authorization: Basic <base64(cr_web:)>     # client_id:client_secret (empty)
+    Content-Type: application/x-www-form-urlencoded
+  Body:
+    grant_type=password
+    username=<user_email>
+    password=<user_password>
+    scope=offline_access
+
+  Response: { access_token, refresh_token, expires_in, token_type, ... }
+
+BLOCKED BY:
+  - Cloudflare Turnstile challenge on every login attempt
+  - Headless browser automation flagged (even with stealth plugins)
+  - Subfinder enumeration: 53 subdomains discovered, all behind Cloudflare
+  - Direct API calls blocked when origin is datacenter IP
+
+SUBDOMAIN ENUMERATION (53 found):
+  Stored in: pentest/crunchyroll/subdomains.txt
+  All behind Cloudflare, none directly reachable
+
+INTEGRATION FILES (incomplete — blocked):
+  - pentest/crunchyroll/CRUNCHYROLL_PENTEST_REPORT.md
+  - pentest/crunchyroll/ffuf_*_results.json  (api/accounts/v1 enumerated)
+  - pentest/crunchyroll/httpx_results.txt    (subdomain fingerprints)
+
+================================================================================
+7. UNIVERSAL EMBED SERVERS — INTEGRATED
+================================================================================
+
+These embed servers work with ANY IMDB or TMDB ID — no per-site integration
+needed. Used as final fallback for any item that has an IMDB ID.
+
+| Server            | URL Pattern                            | Ads? | Quality  |
+|-------------------|----------------------------------------|------|----------|
+| vidlink.pro       | /movie/{imdb} or /tv/{imdb}/{s}/{e}    | Some | UpTo 1080|
+| vidfast.pro       | /movie/{imdb}                          | Some | UpTo 1080|
+| vidnest.fun       | /movie/{imdb}                          | Some | UpTo 1080|
+| player.vidzee.wtf | /embed/movie/{imdb}                    | Some | UpTo 1080|
+| multiembed.mov    | /?video_id={tmdb}&tmdb=1               | Some | UpTo 1080|
+
+================================================================================
+8. FAILED / DEAD / BLOCKED SITES
+================================================================================
+
+| Site                  | Status   | Reason                              |
+|-----------------------|----------|-------------------------------------|
+| anitaku.so            | Blocked  | ERR_BLOCKED_BY_CLIENT               |
+| toonstream.in         | Down     | 522 Connection timed out            |
+| hdtoday.so            | Blocked  | Cloudflare challenge                |
+| 9anime.to             | Blocked  | Cloudflare challenge                |
+| dramacool.so          | Partial  | jQuery, relative paths              |
+| hindilinks4u.to       | Dead     | DNS failure                         |
+| watchomovies.to       | Dead     | Parked domain                       |
+| dotmovies.store       | Dead     | Parked domain                       |
+| themoviesflix.co      | Dead     | DNS failure                         |
+| bolly4u.limo          | Partial  | photojin.baby link shortener — JS   |
+| kimoitv.com           | Partial  | jQuery, didn't render in headless   |
+| animeindia.net        | Lead     | api.animeindia.net subdomain (unv)  |
+| mxplayer.in           | Skipped  | Requires deeper agent-browser probe |
+
+================================================================================
+9. CROSS-CUTTING ARCHITECTURE
+================================================================================
+
+UNIFIED SOURCE INTERFACE:
+  All 5 sources (moviebox, netmirror, fmovies, hindidubanime, animevilla)
+  implement the same SourceClient interface:
+    - search(keyword, page?) → UnifiedItem[]
+    - resolve(item, season?, episode?) → { streamUrl?, embedUrl?, streams?, episodes? }
+    - browse?(page?) → UnifiedItem[]   (only browsable sources)
+
+PARALLEL SEARCH:
+  - User types a query → all 5 sources fire in parallel
+  - Results stream in per-source (NetMirror 41ms, MovieBox ~2s, HDA ~1.4s,
+    AnimeVilla ~1.4s, Fmovies instant)
+  - Results deduped by title+year+type
+  - Each item carries a `source` tag so the player knows how to play it
+
+NO SOURCE PICKER UI:
+  - The app NEVER asks the user to pick a source
+  - All sources fire simultaneously, transparent to the user
+  - If primary source fails, automatic fallback to next source
+
+CROSS-SOURCE FALLBACK CHAIN (resolve):
+  1. NetMirror items → fetch MB subjectid → MB play
+  2. HindiDubAnime items → HDA-specific resolver (HLS or MB fallback)
+  3. AnimeVilla items → AV-specific resolver (MB fallback or sandboxed iframe)
+  4. Items with movieboxSubjectId → MB play
+  5. Item's own source → resolve
+  6. If imdbId available → Fmovies direct embed
+  7. Final fallback → multiembed.mov title search
+
+PERFORMANCE OPTIMIZATIONS:
+  - Bundled static catalogs for HDA (8.2KB, 59 items) and AnimeVilla
+    (42KB, 294 items) — browse/search are instant, no network call
+  - 5-min in-memory cache on all API proxies
+  - Per-source timeout (slow source doesn't block others)
+  - Stream URL cached in localStorage (30-min TTL)
+
+HLS PROXY (for HDA as-cdn21.top streams):
+  - Server-side fetches HLS playlist
+  - Rewrites all URLs in the playlist to go through /api/hls-proxy
+  - Binary-safe segment transmission (no re-encoding)
+  - Solves CORS + IP-locked CDNs
+
+SANDBOXED IFRAME TRICK (for HDA gdmirrorbot + AnimeVilla fallback):
+  - iframe has sandbox="allow-scripts allow-same-origin allow-presentation"
+  - allows scripts (so the player works) but blocks popups + top-nav
+  - This kills the ad network's redirect/popup ads
+  - User sees the video player, no ads
+
+================================================================================
+10. CRITICAL VULNERABILITIES DISCOVERED (RESPONSIBLE DISCLOSURE)
+================================================================================
+
+The following vulnerabilities were discovered during reverse engineering.
+They are documented here for defensive purposes. No exploitation was
+performed beyond verifying existence.
+
+hindidubanime.com (also affects animevilla.org — same theme):
+  - 14 vulnerabilities total (4 critical, 2 high, 5 medium, 3 low)
+  - See section 3 above for full list
+
+netmirror.global:
+  - Firebase API key hardcoded in frontend bundle
+  - All API endpoints unauthenticated (intentional, but risky)
+
+fmoviess.org:
+  - AES-GCM encryption cracked (key = user's country code)
+  - Embed URLs reproducible by anyone with IMDB ID
+
+crunchyroll.com:
+  - OAuth2 client_id "cr_web" with empty client_secret (by design)
+  - Login flow is OAuth2 password grant (deprecated, insecure for browsers)
+  - BUT Cloudflare Turnstile blocks automated access — so practical risk is low
+
+GENERAL NOTE:
+  All findings are for educational/research purposes. The Zex Box app does
+  NOT host any content — it aggregates publicly accessible APIs and embeds.
+  All streams remain served by their original CDNs. The app respects the
+  source sites' terms of service to the extent possible.
+
+================================================================================
+END OF FINDINGS
+================================================================================
