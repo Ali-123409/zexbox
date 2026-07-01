@@ -181,8 +181,27 @@ export async function getUnifiedHome(): Promise<{
     }
 
     // Merge HDA + AnimeVilla into a single "Hindi Dub Anime" section,
-    // deduping by title so the same anime doesn't appear twice.
-    const mergedAnime = dedupeItems([...hdaAnime, ...avAnime]).slice(0, 20);
+    // interleaving both sources so the user sees AV-tagged items alongside HDA.
+    // Strategy: take first 10 from HDA, then fill with AV-only items (deduped by title).
+    const seenTitles = new Set<string>();
+    const mergedAnime: UnifiedItem[] = [];
+    // First pass: first 10 HDA items (these have direct streaming via HLS/MB)
+    for (const item of hdaAnime.slice(0, 10)) {
+      const key = item.title.toLowerCase().trim();
+      if (!seenTitles.has(key)) {
+        seenTitles.add(key);
+        mergedAnime.push(item);
+      }
+    }
+    // Second pass: AV items that aren't already in the list (fills up to 20)
+    for (const item of avAnime) {
+      if (mergedAnime.length >= 20) break;
+      const key = item.title.toLowerCase().trim();
+      if (!seenTitles.has(key)) {
+        seenTitles.add(key);
+        mergedAnime.push(item);
+      }
+    }
     if (mergedAnime.length) {
       sections.push({ title: "Hindi Dub Anime", items: mergedAnime });
     }

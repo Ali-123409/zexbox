@@ -981,6 +981,7 @@ function MovieCard({ item, onOpen, showProgress }: { item: DisplayItem; onOpen: 
       case "netmirror": return { code: "NM", color: "bg-blue-600/90", title: "NetMirror" };
       case "fmovies": return { code: "FM", color: "bg-purple-600/90", title: "Fmovies" };
       case "hindidubanime": return { code: "HDA", color: "bg-orange-600/90", title: "HindiDubAnime" };
+      case "animevilla": return { code: "AV", color: "bg-emerald-600/90", title: "AnimeVilla" };
       case "catalog": return { code: "CAT", color: "bg-zinc-600/90", title: "Catalog" };
       default: return null;
     }
@@ -1176,7 +1177,10 @@ function CategoryView({ category, onOpen }: { category: "movie" | "tv"; onOpen: 
         <span className="flex items-center gap-1"><span className="bg-red-600/90 px-1.5 py-0.5 rounded text-white font-bold">MB</span>MovieBox</span>
         <span className="flex items-center gap-1"><span className="bg-blue-600/90 px-1.5 py-0.5 rounded text-white font-bold">NM</span>NetMirror</span>
         {langFilter === "anime" && (
-          <span className="flex items-center gap-1"><span className="bg-orange-600/90 px-1.5 py-0.5 rounded text-white font-bold">HDA</span>HindiDubAnime</span>
+          <>
+            <span className="flex items-center gap-1"><span className="bg-orange-600/90 px-1.5 py-0.5 rounded text-white font-bold">HDA</span>HindiDubAnime</span>
+            <span className="flex items-center gap-1"><span className="bg-emerald-600/90 px-1.5 py-0.5 rounded text-white font-bold">AV</span>AnimeVilla</span>
+          </>
         )}
       </div>
 
@@ -1223,7 +1227,7 @@ function CategoryView({ category, onOpen }: { category: "movie" | "tv"; onOpen: 
 function SearchView({ onOpen }: { onOpen: (t: DisplayItem) => void; }) {
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<"all" | "movie" | "tv">("all");
-  const [sourceFilter, setSourceFilter] = useState<"all" | "moviebox" | "netmirror" | "fmovies" | "hindidubanime" | "catalog">("all");
+  const [sourceFilter, setSourceFilter] = useState<"all" | "moviebox" | "netmirror" | "fmovies" | "hindidubanime" | "animevilla" | "catalog">("all");
   // Unified search — fires ALL sources in parallel, STREAMS results as each source responds.
   // No more duplicate useMovieSearch call (unified search already includes MovieBox).
   const { results: unifiedResults, loading: unifiedLoading, loadingMore, hasMore, loadMore, sourceStatus } = useUnifiedSearch(q);
@@ -1248,7 +1252,7 @@ function SearchView({ onOpen }: { onOpen: (t: DisplayItem) => void; }) {
 
   // Source counts for the filter chips
   const sourceCounts = useMemo(() => {
-    const counts = { moviebox: 0, netmirror: 0, fmovies: 0, hindidubanime: 0, catalog: 0 };
+    const counts = { moviebox: 0, netmirror: 0, fmovies: 0, hindidubanime: 0, animevilla: 0, catalog: 0 };
     results.forEach((r) => {
       if (counts[r.source as keyof typeof counts] !== undefined) counts[r.source as keyof typeof counts]++;
     });
@@ -1346,6 +1350,19 @@ function SearchView({ onOpen }: { onOpen: (t: DisplayItem) => void; }) {
                     HindiDubAnime ({sourceCounts.hindidubanime})
                   </button>
                 )}
+                {sourceCounts.animevilla > 0 && (
+                  <button
+                    onClick={() => setSourceFilter(sourceFilter === "animevilla" ? "all" : "animevilla")}
+                    className={`shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition ${
+                      sourceFilter === "animevilla"
+                        ? "bg-emerald-600 text-white border-emerald-600"
+                        : "bg-[#1a1a1d] text-white/70 border-white/10 hover:bg-white/5"
+                    }`}
+                  >
+                    <span className="bg-emerald-700 px-1 rounded font-bold">AV</span>
+                    AnimeVilla ({sourceCounts.animevilla})
+                  </button>
+                )}
                 {sourceCounts.catalog > 0 && (
                   <button
                     onClick={() => setSourceFilter(sourceFilter === "catalog" ? "all" : "catalog")}
@@ -1378,6 +1395,10 @@ function SearchView({ onOpen }: { onOpen: (t: DisplayItem) => void; }) {
               <span className={`flex items-center gap-1 ${sourceStatus.hindidubanime === "done" ? "text-green-400" : sourceStatus.hindidubanime === "loading" ? "text-yellow-400" : "text-white/30"}`}>
                 <span className="bg-orange-700 px-1 rounded font-bold text-white">HDA</span>
                 {sourceStatus.hindidubanime === "done" ? "✓" : sourceStatus.hindidubanime === "loading" ? "…" : "·"}
+              </span>
+              <span className={`flex items-center gap-1 ${sourceStatus.animevilla === "done" ? "text-green-400" : sourceStatus.animevilla === "loading" ? "text-yellow-400" : "text-white/30"}`}>
+                <span className="bg-emerald-700 px-1 rounded font-bold text-white">AV</span>
+                {sourceStatus.animevilla === "done" ? "✓" : sourceStatus.animevilla === "loading" ? "…" : "·"}
               </span>
             </div>
           )}
@@ -1631,6 +1652,26 @@ function DetailView({ item, initialEpisode, onPlay, onBack, onOpen }: {
                 <Badge className="bg-[#e50914] hover:bg-[#e50914]">
                   {mergedItem.type === "tv" ? "TV Series" : "Movie"}
                 </Badge>
+                {(() => {
+                  // Source badge in detail view — mirror the card tag colors
+                  const tagMap: Record<string, { code: string; color: string; title: string }> = {
+                    moviebox: { code: "MB", color: "bg-red-600/90", title: "MovieBox" },
+                    netmirror: { code: "NM", color: "bg-blue-600/90", title: "NetMirror" },
+                    fmovies: { code: "FM", color: "bg-purple-600/90", title: "Fmovies" },
+                    hindidubanime: { code: "HDA", color: "bg-orange-600/90", title: "HindiDubAnime" },
+                    animevilla: { code: "AV", color: "bg-emerald-600/90", title: "AnimeVilla" },
+                    catalog: { code: "CAT", color: "bg-zinc-600/90", title: "Catalog" },
+                  };
+                  const tag = tagMap[item.source];
+                  return tag ? (
+                    <span
+                      title={tag.title}
+                      className={`${tag.color} px-1.5 py-0.5 rounded font-bold text-white`}
+                    >
+                      {tag.code}
+                    </span>
+                  ) : null;
+                })()}
                 {mergedItem.rating ? (
                   <span className="flex items-center gap-1 text-white/90">
                     <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
